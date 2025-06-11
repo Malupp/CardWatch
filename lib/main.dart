@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'dart:async';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 void main() {
   runApp(const MyApp());
@@ -36,6 +39,17 @@ class CardWatchHomePage extends StatefulWidget {
 
 class _CardWatchHomePageState extends State<CardWatchHomePage> {
   late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
+  final TextEditingController _controller = TextEditingController();
+  Timer? _debounce;
+  List<String> _suggestions = [];
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -94,6 +108,40 @@ class _CardWatchHomePageState extends State<CardWatchHomePage> {
     );
   }
 
+  void _onTextChanged(String value) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () async {
+      if (value.isNotEmpty) {
+        setState(() => _isLoading = true);
+        final results = await _fetchSuggestions(value);
+        setState(() {
+          _suggestions = results;
+          _isLoading = false;
+        });
+      } else {
+        setState(() => _suggestions = []);
+      }
+    });
+  }
+
+Future<List<String>> _fetchSuggestions(String query) async {
+  final url = Uri.parse('https://api.scryfall.com/cards/autocomplete?q=$query');
+  final response = await http.get(url);
+
+  if (response.statusCode == 200) {
+    final Map<String, dynamic> jsonBody = json.decode(response.body);
+    final List<dynamic> data = jsonBody['data'];
+    return data.cast<String>();
+  } else {
+    throw Exception('Errore nella richiesta');
+  }
+}
+
+  void _selectSuggestion(String suggestion) {
+    _controller.text = suggestion;
+    setState(() => _suggestions = []);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -103,18 +151,36 @@ class _CardWatchHomePageState extends State<CardWatchHomePage> {
       ),
       body: Center(
         child: Padding(
-          padding: const EdgeInsets.all(
-            16.0,
-          ), // margine esterno (tutto intorno)
+          padding: const EdgeInsets.all(16.0),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              maxWidth: 300, // larghezza massima del TextField
+            constraints: const BoxConstraints(maxWidth: 300),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: _controller,
+                  onChanged: _onTextChanged,
+                  decoration: const InputDecoration(
+                    labelText: 'Cerca',
+                  ),
+                ),
+                if (_isLoading)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: CircularProgressIndicator(),
+                  ),
+                if (_suggestions.isNotEmpty)
+                  ..._suggestions.map(
+                    (s) => ListTile(
+                      title: Text(s),
+                      onTap: () => _selectSuggestion(s),
+                    ),
+                  ),
+              ],
             ),
-            child: TextField(),
           ),
         ),
       ),
-
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
@@ -130,7 +196,7 @@ class _CardWatchHomePageState extends State<CardWatchHomePage> {
             child: const Icon(Icons.timer),
           ),
         ],
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      ),
     );
   }
 }
