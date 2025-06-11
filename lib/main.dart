@@ -124,18 +124,18 @@ class _CardWatchHomePageState extends State<CardWatchHomePage> {
     });
   }
 
-Future<List<String>> _fetchSuggestions(String query) async {
-  final url = Uri.parse('https://api.scryfall.com/cards/autocomplete?q=$query');
-  final response = await http.get(url);
+  Future<List<String>> _fetchSuggestions(String query) async {
+    final url = Uri.parse('https://api.scryfall.com/cards/autocomplete?q=$query');
+    final response = await http.get(url);
 
-  if (response.statusCode == 200) {
-    final Map<String, dynamic> jsonBody = json.decode(response.body);
-    final List<dynamic> data = jsonBody['data'];
-    return data.cast<String>();
-  } else {
-    throw Exception('Errore nella richiesta');
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> jsonBody = json.decode(response.body);
+      final List<dynamic> data = jsonBody['data'];
+      return data.cast<String>();
+    } else {
+      throw Exception('Errore nella richiesta');
+    }
   }
-}
 
   void _selectSuggestion(String suggestion) {
     _controller.text = suggestion;
@@ -157,12 +157,34 @@ Future<List<String>> _fetchSuggestions(String query) async {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
-                  controller: _controller,
-                  onChanged: _onTextChanged,
-                  decoration: const InputDecoration(
-                    labelText: 'Cerca',
-                  ),
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.favorite, color: Colors.pink),
+                      onPressed: () {
+                        // Azione per il cuore (puoi aggiungere la tua logica qui)
+                      },
+                    ),
+                    Expanded(
+                      child: TextField(
+                        controller: _controller,
+                        onChanged: _onTextChanged,
+                        decoration: const InputDecoration(
+                          labelText: 'Cerca...',
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.arrow_forward, color: Colors.blue),
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => PlaceholderPage(selected: _controller.text),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
                 if (_isLoading)
                   const Padding(
@@ -196,6 +218,21 @@ Future<List<String>> _fetchSuggestions(String query) async {
             child: const Icon(Icons.timer),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class PlaceholderPage extends StatelessWidget {
+  final String selected;
+  const PlaceholderPage({super.key, required this.selected});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Nuova Pagina')),
+      body: Center(
+        child: Text('Hai selezionato: $selected'),
       ),
     );
   }
