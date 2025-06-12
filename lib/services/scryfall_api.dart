@@ -27,4 +27,21 @@ class ScryfallApi {
       return [];
     }
   }
+
+  static Future<List<String>> fetchRandomCards(int count) async {
+  List<String> images = [];
+
+  for (int i = 0; i < count; i++) {
+    final url = Uri.parse('https://api.scryfall.com/cards/random');
+    final res = await http.get(url);
+
+    if (res.statusCode == 200) {
+      final card = json.decode(res.body);
+      final image = card['image_uris']?['normal'] ?? card['card_faces']?[0]['image_uris']?['normal'];
+      if (image != null) images.add(image);
+    }
+  }
+
+  return images;
+}
 }
