@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import '../models/card_model.dart';
 import '../services/scryfall_api.dart';
+import 'custom_card_widget.dart';
 
 class RandomCardsWidget extends StatefulWidget {
   const RandomCardsWidget({super.key});
@@ -9,19 +11,19 @@ class RandomCardsWidget extends StatefulWidget {
 }
 
 class _RandomCardsWidgetState extends State<RandomCardsWidget> {
-  List<String> _images = [];
+  List<CardModel> _cards = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadRandomCards();
+    _loadCards();
   }
 
-  Future<void> _loadRandomCards() async {
-    final images = await ScryfallApi.fetchRandomCards(5);
+  Future<void> _loadCards() async {
+    final cards = await ScryfallApi.fetchRandomCards(5);
     setState(() {
-      _images = images;
+      _cards = cards;
       _isLoading = false;
     });
   }
@@ -32,16 +34,13 @@ class _RandomCardsWidgetState extends State<RandomCardsWidget> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    return SizedBox(
-      height: MediaQuery.of(context).size.height,
-      child: ListView.separated(
-        scrollDirection: Axis.vertical,
-        itemCount: _images.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
-        itemBuilder: (context, index) {
-          return Image.network(_images[index]);
-        },
-      ),
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _cards.length,
+      itemBuilder: (context, index) {
+        return CustomCardWidget(card: _cards[index]);
+      },
     );
   }
 }
