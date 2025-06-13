@@ -100,12 +100,15 @@ class _ResultTableWidgetState extends State<ResultTableWidget> {
         const SizedBox(height: 8),
         Expanded(
           child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
-              columns: widget.columns.map((col) => DataColumn(label: Text(col))).toList(),
-              rows: _pagedData.map((row) => DataRow(
-                cells: widget.columns.map((col) => DataCell(Text(row[col] ?? ''))).toList(),
-              )).toList(),
+            scrollDirection: Axis.vertical,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                columns: widget.columns.map((col) => DataColumn(label: Text(col))).toList(),
+                rows: _pagedData.map((row) => DataRow(
+                  cells: widget.columns.map((col) => DataCell(Text(row[col] ?? ''))).toList(),
+                )).toList(),
+              ),
             ),
           ),
         ),
