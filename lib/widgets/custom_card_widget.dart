@@ -88,16 +88,38 @@ class CustomCardWidget extends StatelessWidget {
                         'Prezzo Normale',
                         card.price.split('(Foil:')[0].trim(),
                         valueStyle: TextStyle(
-                          color: Theme.of(context).primaryColor,
-                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[600],
+                          fontStyle: FontStyle.italic,
                         ),
                       ),
                       _buildDetailRow(
                         'Prezzo Foil',
                         card.price.split('(Foil:')[1].replaceAll(')', '').trim(),
                         valueStyle: TextStyle(
-                          color: Theme.of(context).primaryColor,
-                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[600],
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
+                  )
+                else if (card.price.contains('(Foil)'))
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildDetailRow(
+                        'Prezzo',
+                        card.price.replaceAll(' (Foil)', ''),
+                        valueStyle: TextStyle(
+                          color: Colors.grey[600],
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                      _buildDetailRow(
+                        'Tipo',
+                        'Foil',
+                        valueStyle: TextStyle(
+                          color: Colors.grey[600],
+                          fontStyle: FontStyle.italic,
                         ),
                       ),
                     ],
@@ -107,13 +129,14 @@ class CustomCardWidget extends StatelessWidget {
                     'Prezzo',
                     card.price,
                     valueStyle: TextStyle(
-                      color: Theme.of(context).primaryColor,
-                      fontWeight: FontWeight.bold,
-                    ),
+                          color: Colors.grey[600],
+                          fontStyle: FontStyle.italic,
+                        ),
                   ),
                 
                 // Condizione (non più sempre Near Mint)
-                _buildDetailRow('Condizione', card.condition),
+                if (card.condition != 'N/A')
+                  _buildDetailRow('Condizione', card.condition),
                 
                 // Dettagli aggiuntivi
                 Wrap(
@@ -121,7 +144,7 @@ class CustomCardWidget extends StatelessWidget {
                   runSpacing: 4,
                   children: [
                     _buildDetailChip('Foil', card.isFoil ? 'Sì' : 'No'),
-                    _buildDetailChip('Graded', card.graded ? 'Sì' : 'No'),
+                    if (card.graded) _buildDetailChip('Graded', 'Sì'),
                     if (card.quantity != null)
                       _buildDetailChip('Disponibili', '${card.quantity}'),
                   ],
@@ -130,19 +153,20 @@ class CustomCardWidget extends StatelessWidget {
                 const SizedBox(height: 8),
                 
                 // Venditore
-                Row(
-                  children: [
-                    const Icon(Icons.person_outline, size: 16),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Venduto da ${card.username}',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
+                if (card.username != 'N/A')
+                  Row(
+                    children: [
+                      const Icon(Icons.person_outline, size: 16),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Venduto da ${card.username}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
               ],
             ),
           ),
@@ -159,7 +183,7 @@ class CustomCardWidget extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 100,
+            width: 150,
             child: Text(
               '$label:',
               style: const TextStyle(fontWeight: FontWeight.bold),

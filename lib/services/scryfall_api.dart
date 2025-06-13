@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import '../models/card_model.dart';
+import 'marketplace_service.dart';
 
 class ScryfallApi {
   static String get _baseUrl => dotenv.env['BASE_SCRYFALL_API'] ?? '';
@@ -62,7 +63,20 @@ class ScryfallApi {
 
       if (res.statusCode == 200) {
         final cardJson = json.decode(res.body);
-        cards.add(CardModel.fromJson(cardJson));
+        final card = CardModel.fromScryfallJson(cardJson);
+        
+        // Prova a ottenere dati aggiuntivi dal marketplace
+        try {
+          final marketplaceData = await _getMarketplaceDataForCard(card.name);
+          if (marketplaceData.isNotEmpty) {
+            cards.add(card.mergeWithMarketplaceData(marketplaceData.first));
+          } else {
+            cards.add(card);
+          }
+        } catch (e) {
+          // Se il marketplace fallisce, usa solo i dati di Scryfall
+          cards.add(card);
+        }
       } else {
         print('Errore nel fetch della carta random: ${res.statusCode}');
       }
@@ -79,9 +93,59 @@ class ScryfallApi {
 
     if (res.statusCode == 200) {
       final data = json.decode(res.body)['data'];
-      return (data as List).map((card) => CardModel.fromJson(card)).toList();
+      final cards = <CardModel>[];
+      
+      for (final cardJson in data) {
+        final card = CardModel.fromScryfallJson(cardJson);
+        
+        // Prova a ottenere dati aggiuntivi dal marketplace
+        try {
+          final marketplaceData = await _getMarketplaceDataForCard(card.name);
+          if (marketplaceData.isNotEmpty) {
+            cards.add(card.mergeWithMarketplaceData(marketplaceData.first));
+          } else {
+            cards.add(card);
+          }
+        } catch (e) {
+          // Se il marketplace fallisce, usa solo i dati di Scryfall
+          cards.add(card);
+        }
+      }
+      
+      return cards;
     } else {
       return [];
     }
+  }
+
+  // Metodo helper per ottenere dati dal marketplace per una carta specifica
+  static Future<List<Map<String, dynamic>>> _getMarketplaceDataForCard(String cardName) async {
+    try {
+      // Prima ottieni i blueprint per la carta
+      final blueprints = await MarketplaceService.getBlueprintList(cardName);
+      
+      if (blueprints.isNotEmpty) {
+        // Prendi il primo blueprint e ottieni i dati del marketplace
+        final marketplaceCards = await MarketplaceService.getMarketCard(blueprints.first.id);
+        
+        // Converti i dati del marketplace in formato Map
+        return marketplaceCards.map((card) => {
+          'name': cardName, // Usa il nome originale
+          'image_url': blueprints.first.imageUrl ?? '',
+          'set_name': card.expansion.nameEn,
+          'price': card.price.formatted,
+          'is_foil': card.isFoil,
+          'condition': card.condition,
+          'seller_name': card.user.username,
+          'quantity': card.quantity,
+          'is_graded': false, // Non disponibile nel modello attuale
+          'artist': '', // Non disponibile nel modello attuale
+        }).toList();
+      }
+    } catch (e) {
+      print('Errore nel recupero dati marketplace per $cardName: $e');
+    }
+    
+    return [];
   }
 }
