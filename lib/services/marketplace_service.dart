@@ -19,7 +19,8 @@ class MarketplaceService {
   // Equivalente di getBlueprintList
   static Future<List<CardBlueprint>> getBlueprintList(String query) async {
     try {
-      final url = '$_baseUrl/blueprints?game_id=${CardGameId.magic}&name=$query';
+      
+      final url = '$_baseUrl/blueprints?game_id=${CardGameId.MAGIC.value}&name=$query';
       final response = await http.get(
         Uri.parse(url),
         headers: _headers,
