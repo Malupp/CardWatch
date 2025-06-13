@@ -4,7 +4,7 @@ import '../models/card_blueprint.dart';
 import '../widgets/card_marketplace_widget.dart';
 
 class MarketplaceScreen extends StatefulWidget {
-  const MarketplaceScreen({Key? key}) : super(key: key);
+  const MarketplaceScreen({super.key});
 
   @override
   State<MarketplaceScreen> createState() => _MarketplaceScreenState();

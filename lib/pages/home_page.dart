@@ -1,39 +1,41 @@
-import 'package:card_watch/services/notification_services.dart';
-import '../widgets/random_cards.dart';
 import 'package:flutter/material.dart';
 import '../widgets/search_bar.dart';
+import '../widgets/random_cards.dart';
+import '../widgets/refresh_button.dart';
+import '../services/notification_services.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
   @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  final GlobalKey<_RandomCardsWidgetState> _randomCardsKey = GlobalKey();
+
+  void _handleRefresh() async {
+    await _randomCardsKey.currentState?.refreshCards();
+    setState(() {}); // Forza il rebuild per aggiornare lo stato di isLoading
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('CardWatch')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: const [
-          SearchBarWidget(),
-          SizedBox(height: 16),
-          RandomCardsWidget(),
-        ],
-      ),
-      floatingActionButton: Column(
-    mainAxisAlignment: MainAxisAlignment.end,
-    children: [
-      FloatingActionButton(
-        onPressed: () => NotificationService.showNow(),
-        tooltip: 'Open Notifications',
-        child: const Icon(Icons.notifications_active),
-      ),
-      const SizedBox(height: 16),
-      FloatingActionButton(
-        onPressed: () => NotificationService.showDelayed(),
-        tooltip: 'Notifica dopo 30s',
-        child: const Icon(Icons.timer),
-      ),
-    ],
-  ),
+    final isLoading = _randomCardsKey.currentState?.isLoading ?? false;
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        const SearchBarWidget(),
+        const SizedBox(height: 16),
+        RefreshButton(
+          onRefresh: _handleRefresh,
+          isLoading: isLoading,
+        ),
+        const SizedBox(height: 16),
+        RandomCardsWidget(key: _randomCardsKey),
+        const SizedBox(height: 100), // Spazio per evitare overlap con navbar
+      ],
     );
   }
 }

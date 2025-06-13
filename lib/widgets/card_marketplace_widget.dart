@@ -8,9 +8,9 @@ class CardMarketplaceWidget extends StatefulWidget {
   final int blueprintId;
 
   const CardMarketplaceWidget({
-    Key? key,
+    super.key,
     required this.blueprintId,
-  }) : super(key: key);
+  });
 
   @override
   State<CardMarketplaceWidget> createState() => _CardMarketplaceWidgetState();
