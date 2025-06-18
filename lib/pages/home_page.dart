@@ -21,28 +21,40 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('CardWatch'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          const SearchBarWidget(),
-          const SizedBox(height: 16),
-          RandomCardsWidget(key: _randomCardsKey),
-          const SizedBox(height: 100), // Spazio per evitare overlap con navbar
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _isLoading ? null : _handleRefresh,
-        tooltip: 'Refresh Cards',
-        child: _isLoading 
-          ? const CircularProgressIndicator(color: Colors.white)
-          : const Icon(Icons.refresh),
-      ),
+    return Column(
+      children: [
+        AppBar(
+          title: const Text('CardWatch'),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+        ),
+        Expanded(
+          child: Stack(
+            children: [
+              ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  const SearchBarWidget(),
+                  const SizedBox(height: 16),
+                  RandomCardsWidget(key: _randomCardsKey),
+                  const SizedBox(height: 100), // Spazio per evitare overlap con navbar
+                ],
+              ),
+              Positioned(
+                right: 16,
+                bottom: 16,
+                child: FloatingActionButton(
+                  onPressed: _isLoading ? null : _handleRefresh,
+                  tooltip: 'Refresh Cards',
+                  child: _isLoading 
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Icon(Icons.refresh),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
