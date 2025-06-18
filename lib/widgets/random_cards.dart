@@ -46,6 +46,24 @@ class RandomCardsWidgetState extends State<RandomCardsWidget>
   // Getter per lo stato di caricamento
   bool get isLoading => _isLoading;
 
+  void _addToCollection(CardModel card) {
+    // TODO: Implementare l'aggiunta alla collezione
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${card.name} aggiunta alla collezione'),
+      ),
+    );
+  }
+
+  void _addToWatchlist(CardModel card) {
+    // TODO: Implementare l'aggiunta alla watchlist
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${card.name} aggiunta alla watchlist'),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     // Cleanup quando il widget viene distrutto
@@ -74,7 +92,31 @@ class RandomCardsWidgetState extends State<RandomCardsWidget>
       physics: const NeverScrollableScrollPhysics(),
       itemCount: _cards.length,
       itemBuilder: (context, index) {
-        return CustomCardWidget(card: _cards[index]);
+        final card = _cards[index];
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CustomCardWidget(card: card),
+              ButtonBar(
+                alignment: MainAxisAlignment.end,
+                children: [
+                  TextButton.icon(
+                    icon: const Icon(Icons.collections_bookmark),
+                    label: const Text('Collezione'),
+                    onPressed: () => _addToCollection(card),
+                  ),
+                  TextButton.icon(
+                    icon: const Icon(Icons.favorite_border),
+                    label: const Text('Watchlist'),
+                    onPressed: () => _addToWatchlist(card),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
       },
     );
   }
