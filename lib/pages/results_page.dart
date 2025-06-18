@@ -18,7 +18,7 @@ class _ResultsPageState extends State<ResultsPage> {
   bool _loading = true;
   List<CardMarketplace> _allCards = [];
   List<CardMarketplace> _filteredCards = [];
-  List<CarouselItem> _carouselImages = [];
+  List<CarouselItem> _allCarouselImages = [];
   int _currentPage = 0;
   final int _cardsPerPage = 10;
   String? _selectedSet;
@@ -89,8 +89,22 @@ class _ResultsPageState extends State<ResultsPage> {
       _loading = false;
       _allCards = cardsList;
       _filteredCards = cardsList;
-      _carouselImages = carouselImages;
+      _allCarouselImages = carouselImages;
     });
+  }
+
+  List<CarouselItem> get _filteredCarouselImages {
+    if (_selectedSet == null && _selectedCondition == null) {
+      return _allCarouselImages;
+    }
+
+    // Ottieni i set unici dalle carte filtrate
+    final filteredSets = _filteredCards.map((c) => c.expansion.nameEn).toSet();
+    
+    // Filtra le immagini del carousel in base ai set delle carte filtrate
+    return _allCarouselImages.where((item) => 
+      filteredSets.contains(item.description)
+    ).toList();
   }
 
   void _filterCards() {
@@ -225,8 +239,8 @@ class _ResultsPageState extends State<ResultsPage> {
           ? const Center(child: Text('Nessuna carta trovata'))
           : Column(
               children: [
-                if (_carouselImages.isNotEmpty) ...[
-                  CarouselWidget(items: _carouselImages),
+                if (_filteredCarouselImages.isNotEmpty) ...[
+                  CarouselWidget(items: _filteredCarouselImages),
                   const Divider(),
                 ],
                 Expanded(
