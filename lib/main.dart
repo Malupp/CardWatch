@@ -18,9 +18,12 @@ class MyApp extends StatelessWidget {
   
   @override
   Widget build(BuildContext context) {
+    final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<void>>();
+    
     return MaterialApp(
       title: 'CardWatch',
       debugShowCheckedModeBanner: false,
+      navigatorObservers: [routeObserver],
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
