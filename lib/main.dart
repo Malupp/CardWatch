@@ -6,18 +6,9 @@ import 'package:card_watch/services/notification_services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
-  await dotenv.load(fileName: ".env");
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
   await NotificationService.init();
-  
-  // Riduce i log di debug (opzionale)
-  if (kDebugMode) {
-    SystemChrome.setSystemUIOverlayStyle(
-      const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-      ),
-    );
-  }
   
   runApp(const MyApp());
 }
@@ -27,9 +18,24 @@ class MyApp extends StatelessWidget {
   
   @override
   Widget build(BuildContext context) {
+    final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<void>>();
+    
     return MaterialApp(
       title: 'CardWatch',
-      theme: ThemeData.dark(),
+      debugShowCheckedModeBanner: false,
+      navigatorObservers: [routeObserver],
+      theme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blue,
+          brightness: Brightness.dark,
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          centerTitle: true,
+        ),
+      ),
       home: const MainLayout(),
     );
   }

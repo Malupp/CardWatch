@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/search_bar.dart';
 import '../widgets/random_cards.dart';
-import '../widgets/refresh_button.dart';
-import '../services/notification_services.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -12,29 +10,56 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final GlobalKey<_RandomCardsWidgetState> _randomCardsKey = GlobalKey();
+  final GlobalKey<RandomCardsWidgetState> _randomCardsKey = GlobalKey<RandomCardsWidgetState>();
+  bool _isLoading = false;
 
   void _handleRefresh() async {
+    setState(() => _isLoading = true);
     await _randomCardsKey.currentState?.refreshCards();
-    setState(() {}); // Forza il rebuild per aggiornare lo stato di isLoading
+    setState(() => _isLoading = false);
   }
 
   @override
   Widget build(BuildContext context) {
-    final isLoading = _randomCardsKey.currentState?.isLoading ?? false;
+    final routeObserver = Navigator.of(context)
+        .widget
+        .observers
+        .whereType<RouteObserver<ModalRoute<void>>>()
+        .first;
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
+    return Column(
       children: [
-        const SearchBarWidget(),
-        const SizedBox(height: 16),
-        RefreshButton(
-          onRefresh: _handleRefresh,
-          isLoading: isLoading,
+        AppBar(
+          title: const Text('CardWatch'),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
         ),
-        const SizedBox(height: 16),
-        RandomCardsWidget(key: _randomCardsKey),
-        const SizedBox(height: 100), // Spazio per evitare overlap con navbar
+        Expanded(
+          child: Stack(
+            children: [
+              ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  SearchBarWidget(routeObserver: routeObserver),
+                  const SizedBox(height: 16),
+                  RandomCardsWidget(key: _randomCardsKey),
+                  const SizedBox(height: 100), // Spazio per evitare overlap con navbar
+                ],
+              ),
+              Positioned(
+                right: 16,
+                bottom: 16,
+                child: FloatingActionButton(
+                  onPressed: _isLoading ? null : _handleRefresh,
+                  tooltip: 'Refresh Cards',
+                  child: _isLoading 
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Icon(Icons.refresh),
+                ),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
