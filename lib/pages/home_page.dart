@@ -21,6 +21,12 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final routeObserver = Navigator.of(context)
+        .widget
+        .observers
+        .whereType<RouteObserver<ModalRoute<void>>>()
+        .first;
+
     return Column(
       children: [
         AppBar(
@@ -34,7 +40,7 @@ class _HomePageState extends State<HomePage> {
               ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  const SearchBarWidget(),
+                  SearchBarWidget(routeObserver: routeObserver),
                   const SizedBox(height: 16),
                   RandomCardsWidget(key: _randomCardsKey),
                   const SizedBox(height: 100), // Spazio per evitare overlap con navbar
