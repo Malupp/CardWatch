@@ -1,0 +1,115 @@
+{
+	"info": {
+		"_postman_id": "random-uuid",
+		"name": "CardWatch Marketplace API",
+		"description": "Collection for testing the CardWatch Marketplace API endpoints",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Get Blueprint List",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{marketplace_token}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/blueprints?game_id=1&name={{card_name}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"blueprints"
+					],
+					"query": [
+						{
+							"key": "game_id",
+							"value": "1",
+							"description": "1 = MAGIC (from CardGameId enum)"
+						},
+						{
+							"key": "name",
+							"value": "{{card_name}}",
+							"description": "Nome della carta da cercare"
+						}
+					]
+				},
+				"description": "Recupera la lista dei blueprint delle carte in base al nome"
+			},
+			"response": []
+		},
+		{
+			"name": "Get Market Card",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{marketplace_token}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/marketplace/products?blueprint_id={{blueprint_id}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"marketplace",
+						"products"
+					],
+					"query": [
+						{
+							"key": "blueprint_id",
+							"value": "{{blueprint_id}}",
+							"description": "ID del blueprint della carta"
+						}
+					]
+				},
+				"description": "Recupera le carte in vendita nel marketplace per un determinato blueprint"
+			},
+			"response": []
+		}
+	],
+	"event": [],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "",
+			"type": "string",
+			"description": "URL base dell'API del marketplace"
+		},
+		{
+			"key": "marketplace_token",
+			"value": "",
+			"type": "string",
+			"description": "Token di autenticazione per il marketplace"
+		},
+		{
+			"key": "card_name",
+			"value": "",
+			"type": "string",
+			"description": "Nome della carta da cercare"
+		},
+		{
+			"key": "blueprint_id",
+			"value": "",
+			"type": "string",
+			"description": "ID del blueprint della carta"
+		}
+	]
+} 
