@@ -1,107 +1,105 @@
 import 'package:flutter/material.dart';
+import '../services/local_storage.dart';
+import '../models/card_marketplace.dart';
 
-class CollectionPage extends StatelessWidget {
+class CollectionPage extends StatefulWidget {
   const CollectionPage({super.key});
 
   @override
+  State<CollectionPage> createState() => _CollectionPageState();
+}
+
+class _CollectionPageState extends State<CollectionPage> {
+  @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        AppBar(
-          title: const Text('La Tua Collezione'),
-          centerTitle: true,
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-        ),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildSectionTitle('Carte Recenti'),
-                _buildCardGrid(),
-                const SizedBox(height: 20),
-                _buildSectionTitle('Categorie'),
-                _buildCategoryList(),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCardGrid() {
-    return Expanded(
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const AlwaysScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: 10,
-          mainAxisSpacing: 10,
-          childAspectRatio: 0.7,
-        ),
-        itemCount: 4,
-        itemBuilder: (context, index) {
-          return Card(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Column(
-              children: [
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
-                      color: Colors.blue[100],
-                    ),
-                    child: const Icon(Icons.credit_card, size: 50),
+    final collection = LocalStorage().collection;
+    return Scaffold(
+      appBar: AppBar(title: const Text('La Tua Collezione')),
+      body: collection.isEmpty
+          ? const Center(child: Text('Nessuna carta nella collezione'))
+          : ListView.builder(
+              itemCount: collection.length,
+              itemBuilder: (context, index) {
+                final card = collection[index];
+                final isInCollection = LocalStorage().collection.any((c) => c.expansion.nameEn == card.expansion.nameEn && c.user.username == card.user.username);
+                final isInWatchlist = LocalStorage().watchlist.any((c) => c.expansion.nameEn == card.expansion.nameEn && c.user.username == card.user.username);
+                return ListTile(
+                  leading: (card.propertiesHash['imageUrl'] != null && card.propertiesHash['imageUrl'].toString().isNotEmpty)
+                    ? Image.network(
+                        card.propertiesHash['imageUrl'],
+                        width: 60,
+                        height: 90,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          width: 60,
+                          height: 90,
+                          color: Colors.grey[200],
+                          child: const Center(
+                            child: Icon(Icons.broken_image, size: 30, color: Colors.grey),
+                          ),
+                        ),
+                      )
+                    : null,
+                  title: Text(card.expansion.nameEn),
+                  subtitle: Text('${card.user.username} • ${card.price.formatted}'),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete),
+                    onPressed: () {
+                      setState(() {
+                        LocalStorage().removeFromCollection(card);
+                      });
+                    },
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Text('Carta ${index + 1}'),
-                ),
-              ],
+                  onTap: () async {
+                    String? imageUrl = card.propertiesHash['imageUrl'];
+                    if (imageUrl == null || !imageUrl.contains('/normal/')) {
+                      try {
+                        // Qui puoi usare ScryfallApi.getCardsImageByExpansionCode o una funzione simile
+                      } catch (e) {}
+                    }
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: Text(card.expansion.nameEn),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (card.propertiesHash['imageNormalUrl'] != null && card.propertiesHash['imageNormalUrl'].toString().isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8.0),
+                                child: Image.network(
+                                  card.propertiesHash['imageNormalUrl'],
+                                  height: 250,
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                            Text('Venditore: \t${card.user.username}', style: const TextStyle(fontSize: 16)),
+                            Text('Prezzo: \t${card.price.formatted}', style: const TextStyle(fontSize: 16)),
+                            Text('Condizione: \t${card.condition}', style: const TextStyle(fontSize: 16)),
+                            Text('Foil: \t${card.isFoil ? 'Sì' : 'No'}', style: const TextStyle(fontSize: 16)),
+                          ],
+                        ),
+                        actions: [
+                          TextButton(
+                            child: const Text('CHIUDI'),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
             ),
-          );
-        },
-      ),
     );
   }
 
-  Widget _buildCategoryList() {
-    final categories = ['Rare', 'Comuni', 'Foil', 'Giocate'];
-    return SizedBox(
-      height: 50,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: categories.length,
-        itemBuilder: (context, index) {
-          return Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: Chip(
-              label: Text(categories[index]),
-              backgroundColor: Colors.blue[50],
-            ),
-          );
-        },
-      ),
-    );
+  void _addToCollection(CardMarketplace card) {
+    // Implementa la logica per aggiungere la carta alla collezione
+  }
+
+  void _addToWatchlist(CardMarketplace card) {
+    // Implementa la logica per aggiungere la carta alla watchlist
   }
 }
