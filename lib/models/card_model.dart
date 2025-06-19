@@ -1,6 +1,7 @@
 class CardModel {
   final String name;
-  final String imageUrl;
+  final String imageUrl; // art_crop
+  final String? imageNormalUrl; // normal
   final String expansion;
   final String price;
   final bool isFoil;
@@ -9,10 +10,16 @@ class CardModel {
   final int? quantity;
   final bool graded;
   final String artist;
+  final String? manaCost;
+  final String? typeLine;
+  final String? oracleText;
+  final String? power;
+  final String? toughness;
 
   CardModel({
     required this.name,
     required this.imageUrl,
+    this.imageNormalUrl,
     required this.expansion,
     required this.price,
     required this.isFoil,
@@ -21,17 +28,24 @@ class CardModel {
     required this.quantity,
     required this.graded,
     required this.artist,
+    this.manaCost,
+    this.typeLine,
+    this.oracleText,
+    this.power,
+    this.toughness,
   });
 
   // Factory per dati da Scryfall API
   factory CardModel.fromScryfallJson(Map<String, dynamic> json) {
-    final image = json['image_uris']?['art_crop'] ?? '';
+    final artCrop = json['image_uris']?['art_crop'] ?? '';
+    final normal = json['image_uris']?['normal'] ?? '';
     final price = json['prices']?['eur'] != null ? '${json['prices']['eur']} €' : 'N/A';
     final priceFoil = json['prices']?['eur_foil'] != null ? '${json['prices']['eur_foil']} €' : 'N/A';
 
     return CardModel(
       name: json['name'] ?? '',
-      imageUrl: image,
+      imageUrl: artCrop,
+      imageNormalUrl: normal,
       expansion: json['set_name'] ?? '',
       price: price + (json['foil'] == true ? ' (Foil: $priceFoil)' : ''),
       isFoil: json['foil'] ?? false,
@@ -40,6 +54,11 @@ class CardModel {
       quantity: json['quantity'],
       graded: false, // Verrà aggiornato se disponibile dal marketplace
       artist: json['artist'] ?? '',
+      manaCost: json['mana_cost'],
+      typeLine: json['type_line'],
+      oracleText: json['oracle_text'],
+      power: json['power'],
+      toughness: json['toughness'],
     );
   }
 
@@ -56,6 +75,11 @@ class CardModel {
       quantity: json['quantity'],
       graded: json['is_graded'] ?? false,
       artist: json['artist'] ?? '',
+      manaCost: json['mana_cost'],
+      typeLine: json['type_line'],
+      oracleText: json['oracle_text'],
+      power: json['power'],
+      toughness: json['toughness'],
     );
   }
 
@@ -81,6 +105,7 @@ class CardModel {
     return CardModel(
       name: name,
       imageUrl: imageUrl.isNotEmpty ? imageUrl : (marketplaceData['image_url'] ?? ''),
+      imageNormalUrl: imageNormalUrl,
       expansion: expansion.isNotEmpty ? expansion : (marketplaceData['set_name'] ?? ''),
       price: finalPrice,
       isFoil: isFoil || (marketplaceData['is_foil'] ?? false),
@@ -89,6 +114,11 @@ class CardModel {
       quantity: quantity ?? marketplaceData['quantity'],
       graded: graded || (marketplaceData['is_graded'] ?? false),
       artist: artist.isNotEmpty ? artist : (marketplaceData['artist'] ?? ''),
+      manaCost: manaCost,
+      typeLine: typeLine,
+      oracleText: oracleText,
+      power: power,
+      toughness: toughness,
     );
   }
 

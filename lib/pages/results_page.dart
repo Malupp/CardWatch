@@ -5,6 +5,7 @@ import '../services/marketplace_service.dart';
 import '../widgets/carousel_widget.dart';
 import '../widgets/custom_card_widget.dart';
 import '../services/scryfall_api.dart';
+import '../services/local_storage.dart';
 
 class ResultsPage extends StatefulWidget {
   final String query;
@@ -198,20 +199,60 @@ class _ResultsPageState extends State<ResultsPage> {
     );
   }
 
-  void _addToCollection(CardMarketplace card) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${card.expansion.nameEn} aggiunta alla collezione'),
-      ),
+  String? _getImageUrlForCard(CardMarketplace card) {
+    // Cerca l'immagine normal dal carousel per il set corrispondente
+    final carouselItem = _allCarouselImages.firstWhere(
+      (item) => item.description == card.expansion.nameEn,
+      orElse: () => CarouselItem(url: '', description: ''),
+    );
+    return carouselItem.url;
+  }
+
+  CardMarketplace _withImageUrl(CardMarketplace card) {
+    final imageUrl = _getImageUrlForCard(card);
+    final newProperties = Map<String, dynamic>.from(card.propertiesHash);
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      newProperties['imageUrl'] = imageUrl;
+    }
+    return CardMarketplace(
+      user: card.user,
+      expansion: card.expansion,
+      price: card.price,
+      propertiesHash: newProperties,
+      quantity: card.quantity,
     );
   }
 
-  void _addToWatchlist(CardMarketplace card) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${card.expansion.nameEn} aggiunta alla watchlist'),
-      ),
-    );
+  void _toggleCollection(CardMarketplace card) {
+    final isInCollection = LocalStorage().collection.any((c) => c.expansion.nameEn == card.expansion.nameEn && c.user.username == card.user.username);
+    if (isInCollection) {
+      LocalStorage().removeFromCollection(card);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${card.expansion.nameEn} rimossa dalla collezione')),
+      );
+    } else {
+      LocalStorage().addToCollection(_withImageUrl(card));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${card.expansion.nameEn} aggiunta alla collezione')),
+      );
+    }
+    setState(() {});
+  }
+
+  void _toggleWatchlist(CardMarketplace card) {
+    final isInWatchlist = LocalStorage().watchlist.any((c) => c.expansion.nameEn == card.expansion.nameEn && c.user.username == card.user.username);
+    if (isInWatchlist) {
+      LocalStorage().removeFromWatchlist(card);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${card.expansion.nameEn} rimossa dalla watchlist')),
+      );
+    } else {
+      LocalStorage().addToWatchlist(_withImageUrl(card));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${card.expansion.nameEn} aggiunta alla watchlist')),
+      );
+    }
+    setState(() {});
   }
 
   String _getConditionLabel(String condition) {
@@ -248,6 +289,8 @@ class _ResultsPageState extends State<ResultsPage> {
                     itemCount: _currentPageCards.length,
                     itemBuilder: (context, index) {
                       final card = _currentPageCards[index];
+                      final isInCollection = LocalStorage().collection.any((c) => c.expansion.nameEn == card.expansion.nameEn && c.user.username == card.user.username);
+                      final isInWatchlist = LocalStorage().watchlist.any((c) => c.expansion.nameEn == card.expansion.nameEn && c.user.username == card.user.username);
                       return Card(
                         margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                         child: InkWell(
@@ -258,6 +301,24 @@ class _ResultsPageState extends State<ResultsPage> {
                             padding: const EdgeInsets.all(8.0),
                             child: Row(
                               children: [
+                                if (card.propertiesHash['imageUrl'] != null && card.propertiesHash['imageUrl'].toString().isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(right: 8.0),
+                                    child: Image.network(
+                                      card.propertiesHash['imageUrl'],
+                                      width: 60,
+                                      height: 90,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) => Container(
+                                        width: 60,
+                                        height: 90,
+                                        color: Colors.grey[200],
+                                        child: const Center(
+                                          child: Icon(Icons.broken_image, size: 30, color: Colors.grey),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -285,14 +346,20 @@ class _ResultsPageState extends State<ResultsPage> {
                                 ),
                                 const SizedBox(width: 8),
                                 IconButton(
-                                  icon: const Icon(Icons.collections_bookmark_outlined),
-                                  onPressed: () => _addToCollection(card),
-                                  tooltip: 'Aggiungi alla collezione',
+                                  icon: Icon(
+                                    Icons.collections_bookmark_outlined,
+                                    color: isInCollection ? Colors.green : null,
+                                  ),
+                                  onPressed: () => _toggleCollection(card),
+                                  tooltip: isInCollection ? 'Rimuovi dalla collezione' : 'Aggiungi alla collezione',
                                 ),
                                 IconButton(
-                                  icon: const Icon(Icons.favorite_border),
-                                  onPressed: () => _addToWatchlist(card),
-                                  tooltip: 'Aggiungi alla watchlist',
+                                  icon: Icon(
+                                    isInWatchlist ? Icons.favorite : Icons.favorite_border,
+                                    color: isInWatchlist ? Colors.red : null,
+                                  ),
+                                  onPressed: () => _toggleWatchlist(card),
+                                  tooltip: isInWatchlist ? 'Rimuovi dalla watchlist' : 'Aggiungi alla watchlist',
                                 ),
                               ],
                             ),
