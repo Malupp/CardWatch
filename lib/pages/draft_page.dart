@@ -20,6 +20,9 @@ class _DraftPageState extends State<DraftPage> {
   List<CardModel> _filteredCards = [];
   final TextEditingController _searchController = TextEditingController();
 
+  int _currentPage = 0;
+  final int _cardsPerPage = 20;
+
   @override
   void initState() {
     super.initState();
@@ -50,6 +53,7 @@ class _DraftPageState extends State<DraftPage> {
       _cards = cards;
       _filteredCards = cards;
       _loadingCards = false;
+      _currentPage = 0;
     });
   }
 
@@ -62,7 +66,14 @@ class _DraftPageState extends State<DraftPage> {
             .where((c) => c.name.toLowerCase().contains(query.toLowerCase()))
             .toList();
       }
+      _currentPage = 0;
     });
+  }
+
+  List<CardModel> get _currentPageCards {
+    final startIndex = _currentPage * _cardsPerPage;
+    final endIndex = (startIndex + _cardsPerPage).clamp(0, _filteredCards.length);
+    return _filteredCards.sublist(startIndex, endIndex);
   }
 
   @override
@@ -99,9 +110,12 @@ class _DraftPageState extends State<DraftPage> {
                 if (_selectedSet != null) ...[
                   TextField(
                     controller: _searchController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Cerca carta',
                       prefixIcon: Icon(Icons.search),
+                      isDense: true,
+                      contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
                     ),
                     onChanged: _filterCards,
                   ),
@@ -111,10 +125,12 @@ class _DraftPageState extends State<DraftPage> {
                     ? const Expanded(child: Center(child: CircularProgressIndicator()))
                     : Expanded(
                         child: ListView.builder(
-                          itemCount: _filteredCards.length,
+                          itemCount: _currentPageCards.length,
                           itemBuilder: (context, index) {
-                            final card = _filteredCards[index];
+                            final card = _currentPageCards[index];
                             return ListTile(
+                              dense: true,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
                               leading: card.imageUrl.isNotEmpty
                                   ? Image.network(
                                       card.imageUrl,
@@ -124,7 +140,7 @@ class _DraftPageState extends State<DraftPage> {
                                       errorBuilder: (c, e, s) => const Icon(Icons.broken_image),
                                     )
                                   : null,
-                              title: Text(card.name),
+                              title: Text(card.name, overflow: TextOverflow.ellipsis),
                               onTap: () => Navigator.of(context).push(
                                 MaterialPageRoute(
                                   builder: (_) => ResultsPage(query: card.name),
@@ -134,6 +150,31 @@ class _DraftPageState extends State<DraftPage> {
                           },
                         ),
                       ),
+                if (_filteredCards.length > _cardsPerPage)
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.chevron_left),
+                          onPressed: _currentPage > 0
+                              ? () => setState(() => _currentPage--)
+                              : null,
+                        ),
+                        Text(
+                          "Pagina ${_currentPage + 1} di ${(_filteredCards.length / _cardsPerPage).ceil()}",
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.chevron_right),
+                          onPressed: (_currentPage + 1) * _cardsPerPage < _filteredCards.length
+                              ? () => setState(() => _currentPage++)
+                              : null,
+                        ),
+                      ],
+                    ),
+                  ),
               ],
             ),
           ),
