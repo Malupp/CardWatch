@@ -6,14 +6,14 @@ class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<HomePage> createState() => HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class HomePageState extends State<HomePage> {
   final GlobalKey<RandomCardsWidgetState> _randomCardsKey = GlobalKey<RandomCardsWidgetState>();
   bool _isLoading = false;
 
-  void _handleRefresh() async {
+  void handleRefresh() async {
     setState(() => _isLoading = true);
     await _randomCardsKey.currentState?.refreshCards();
     setState(() => _isLoading = false);
@@ -35,28 +35,13 @@ class _HomePageState extends State<HomePage> {
           elevation: 0,
         ),
         Expanded(
-          child: Stack(
+          child: ListView(
+            padding: const EdgeInsets.all(16),
             children: [
-              ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  SearchBarWidget(routeObserver: routeObserver),
-                  const SizedBox(height: 16),
-                  RandomCardsWidget(key: _randomCardsKey),
-                  const SizedBox(height: 100), // Spazio per evitare overlap con navbar
-                ],
-              ),
-              Positioned(
-                right: 16,
-                bottom: 100,
-                child: FloatingActionButton(
-                  onPressed: _isLoading ? null : _handleRefresh,
-                  tooltip: 'Refresh Cards',
-                  child: _isLoading 
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Icon(Icons.refresh),
-                ),
-              ),
+              SearchBarWidget(routeObserver: routeObserver),
+              const SizedBox(height: 16),
+              RandomCardsWidget(key: _randomCardsKey),
+              const SizedBox(height: 100), // Spazio per evitare overlap con navbar
             ],
           ),
         ),

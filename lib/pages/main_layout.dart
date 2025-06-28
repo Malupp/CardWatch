@@ -15,14 +15,20 @@ class MainLayout extends StatefulWidget {
 
 class _MainLayoutState extends State<MainLayout> {
   int _currentIndex = 0;
+  final GlobalKey<HomePageState> _homePageKey = GlobalKey<HomePageState>();
+  late final List<Widget> _pages;
 
-  final List<Widget> _pages = const [
-    HomePage(),
-    CollectionPage(),
-    WatchlistPage(),
-    DraftPage(),
-    ProfilePage(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _pages = [
+      HomePage(key: _homePageKey),
+      const CollectionPage(),
+      const WatchlistPage(),
+      const DraftPage(),
+      const ProfilePage(),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,6 +47,18 @@ class _MainLayoutState extends State<MainLayout> {
               onTap: (index) => setState(() => _currentIndex = index),
             ),
           ),
+          if (_currentIndex == 0)
+            Positioned(
+              right: 16,
+              bottom: MediaQuery.of(context).padding.bottom + 100,
+              child: FloatingActionButton(
+                onPressed: () {
+                  _homePageKey.currentState?.handleRefresh();
+                },
+                tooltip: 'Refresh Cards',
+                child: const Icon(Icons.refresh),
+              ),
+            ),
         ],
       ),
     );
