@@ -27,12 +27,21 @@ class _MainLayoutState extends State<MainLayout> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: _pages[_currentIndex],
-      ),
-      bottomNavigationBar: BubbleNavbar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
+      body: Stack(
+        children: [
+          SafeArea(
+            child: _pages[_currentIndex],
+          ),
+          Positioned(
+            left: 24,
+            right: 24,
+            bottom: 0,
+            child: BubbleNavbar(
+              currentIndex: _currentIndex,
+              onTap: (index) => setState(() => _currentIndex = index),
+            ),
+          ),
+        ],
       ),
     );
   }
