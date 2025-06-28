@@ -72,10 +72,10 @@ class _ResultsPageState extends State<ResultsPage> {
     });
 
     for (final card in cardsList) {
-      final alreadyGetted = carouselImages.any(
+      final alreadyFetched = carouselImages.any(
         (element) => element.description == card.expansion.nameEn
       );
-      if (!alreadyGetted) {
+      if (!alreadyFetched) {
         final image = await ScryfallApi.getCardsImageByExpansionCode(
           widget.query,
           card.expansion.code,

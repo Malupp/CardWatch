@@ -50,7 +50,11 @@ class CardExpansion {
   CardExpansion({required this.nameEn, required this.code, required this.id});
 
   factory CardExpansion.fromJson(Map<String, dynamic> json) {
-    return CardExpansion(nameEn: json['name_en'] ?? '', code: json['code'] ?? '', id: json['id'] ?? '', );
+    return CardExpansion(
+      nameEn: json['name_en'] ?? '',
+      code: json['code'] ?? '',
+      id: json['id'] is int ? json['id'] as int : int.tryParse('${json['id']}') ?? 0,
+    );
   }
 }
 
