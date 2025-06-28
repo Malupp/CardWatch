@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/scryfall_api.dart';
 import '../models/scryfall_set.dart';
 import '../models/card_model.dart';
+import 'results_page.dart';
 
 class DraftPage extends StatefulWidget {
   const DraftPage({super.key});
@@ -11,18 +12,24 @@ class DraftPage extends StatefulWidget {
 }
 
 class _DraftPageState extends State<DraftPage> {
-  int _selectedFormat = 0;
-  final List<String> _formats = ['Standard', 'Modern', 'Commander', 'Pauper'];
   List<ScryfallSet> _sets = [];
   ScryfallSet? _selectedSet;
   bool _loadingSets = true;
   bool _loadingCards = false;
   List<CardModel> _cards = [];
+  List<CardModel> _filteredCards = [];
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _loadSets();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadSets() async {
@@ -41,7 +48,20 @@ class _DraftPageState extends State<DraftPage> {
     final cards = await ScryfallApi.fetchCardsBySet(code);
     setState(() {
       _cards = cards;
+      _filteredCards = cards;
       _loadingCards = false;
+    });
+  }
+
+  void _filterCards(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        _filteredCards = _cards;
+      } else {
+        _filteredCards = _cards
+            .where((c) => c.name.toLowerCase().contains(query.toLowerCase()))
+            .toList();
+      }
     });
   }
 
@@ -59,8 +79,6 @@ class _DraftPageState extends State<DraftPage> {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                _buildFormatSelector(),
-                const SizedBox(height: 16),
                 _loadingSets
                     ? const CircularProgressIndicator()
                     : DropdownButtonFormField<ScryfallSet>(
@@ -78,13 +96,24 @@ class _DraftPageState extends State<DraftPage> {
                         },
                       ),
                 const SizedBox(height: 16),
+                if (_selectedSet != null) ...[
+                  TextField(
+                    controller: _searchController,
+                    decoration: const InputDecoration(
+                      labelText: 'Cerca carta',
+                      prefixIcon: Icon(Icons.search),
+                    ),
+                    onChanged: _filterCards,
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 _loadingCards
                     ? const Expanded(child: Center(child: CircularProgressIndicator()))
                     : Expanded(
                         child: ListView.builder(
-                          itemCount: _cards.length,
+                          itemCount: _filteredCards.length,
                           itemBuilder: (context, index) {
-                            final card = _cards[index];
+                            final card = _filteredCards[index];
                             return ListTile(
                               leading: card.imageUrl.isNotEmpty
                                   ? Image.network(
@@ -96,6 +125,11 @@ class _DraftPageState extends State<DraftPage> {
                                     )
                                   : null,
                               title: Text(card.name),
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => ResultsPage(query: card.name),
+                                ),
+                              ),
                             );
                           },
                         ),
@@ -105,46 +139,6 @@ class _DraftPageState extends State<DraftPage> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildFormatSelector() {
-    return SizedBox(
-      width: 250,
-      child: DropdownButtonFormField<int>(
-        value: _selectedFormat,
-        items: _formats.asMap().entries.map((entry) {
-          return DropdownMenuItem<int>(
-            value: entry.key,
-            child: Text(entry.value),
-          );
-        }).toList(),
-        onChanged: (value) {
-          setState(() {
-            _selectedFormat = value!;
-          });
-        },
-        decoration: const InputDecoration(
-          border: OutlineInputBorder(),
-          contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        ),
-      ),
-    );
-  }
-
-  void _startDraft() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Draft Iniziato!'),
-        content: Text('Formato: ${_formats[_selectedFormat]}'),
-        actions: [
-          TextButton(
-            child: const Text('OK'),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ],
-      ),
     );
   }
 }
