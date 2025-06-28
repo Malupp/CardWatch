@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../services/scryfall_api.dart';
+import '../models/scryfall_set.dart';
+import '../models/card_model.dart';
 
 class DraftPage extends StatefulWidget {
   const DraftPage({super.key});
@@ -10,6 +13,37 @@ class DraftPage extends StatefulWidget {
 class _DraftPageState extends State<DraftPage> {
   int _selectedFormat = 0;
   final List<String> _formats = ['Standard', 'Modern', 'Commander', 'Pauper'];
+  List<ScryfallSet> _sets = [];
+  ScryfallSet? _selectedSet;
+  bool _loadingSets = true;
+  bool _loadingCards = false;
+  List<CardModel> _cards = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSets();
+  }
+
+  Future<void> _loadSets() async {
+    final sets = await ScryfallApi.fetchSets();
+    setState(() {
+      _sets = sets;
+      _loadingSets = false;
+    });
+  }
+
+  Future<void> _loadCardsForSet(String code) async {
+    setState(() {
+      _loadingCards = true;
+      _cards = [];
+    });
+    final cards = await ScryfallApi.fetchCardsBySet(code);
+    setState(() {
+      _cards = cards;
+      _loadingCards = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,26 +55,51 @@ class _DraftPageState extends State<DraftPage> {
           elevation: 0,
         ),
         Expanded(
-          child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.shuffle, size: 60, color: Colors.blue),
-                const SizedBox(height: 20),
-                const Text(
-                  'Seleziona un formato:',
-                  style: TextStyle(fontSize: 18),
-                ),
-                const SizedBox(height: 20),
                 _buildFormatSelector(),
-                const SizedBox(height: 40),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-                  ),
-                  child: const Text('INIZIA DRAFT'),
-                  onPressed: _startDraft,
-                ),
+                const SizedBox(height: 16),
+                _loadingSets
+                    ? const CircularProgressIndicator()
+                    : DropdownButtonFormField<ScryfallSet>(
+                        value: _selectedSet,
+                        hint: const Text('Seleziona espansione'),
+                        items: _sets
+                            .map((s) => DropdownMenuItem(
+                                  value: s,
+                                  child: Text(s.name),
+                                ))
+                            .toList(),
+                        onChanged: (value) {
+                          setState(() => _selectedSet = value);
+                          if (value != null) _loadCardsForSet(value.code);
+                        },
+                      ),
+                const SizedBox(height: 16),
+                _loadingCards
+                    ? const Expanded(child: Center(child: CircularProgressIndicator()))
+                    : Expanded(
+                        child: ListView.builder(
+                          itemCount: _cards.length,
+                          itemBuilder: (context, index) {
+                            final card = _cards[index];
+                            return ListTile(
+                              leading: card.imageUrl.isNotEmpty
+                                  ? Image.network(
+                                      card.imageUrl,
+                                      width: 40,
+                                      height: 60,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (c, e, s) => const Icon(Icons.broken_image),
+                                    )
+                                  : null,
+                              title: Text(card.name),
+                            );
+                          },
+                        ),
+                      ),
               ],
             ),
           ),

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import '../models/card_model.dart';
+import '../models/scryfall_set.dart';
 import 'marketplace_service.dart';
 
 class ScryfallApi {
@@ -49,6 +50,30 @@ class ScryfallApi {
           })
           .whereType<String>()
           .toList();
+    } else {
+      return [];
+    }
+  }
+
+  static Future<List<ScryfallSet>> fetchSets() async {
+    final url = Uri.parse('$_baseUrl/sets');
+    final res = await http.get(url);
+
+    if (res.statusCode == 200) {
+      final data = json.decode(res.body)['data'] as List<dynamic>;
+      return data.map((s) => ScryfallSet.fromJson(s)).toList();
+    } else {
+      return [];
+    }
+  }
+
+  static Future<List<CardModel>> fetchCardsBySet(String setCode) async {
+    final url = Uri.parse('$_baseUrl/cards/search?q=e%3A$setCode');
+    final res = await http.get(url);
+
+    if (res.statusCode == 200) {
+      final data = json.decode(res.body)['data'] as List<dynamic>;
+      return data.map((c) => CardModel.fromScryfallJson(c)).toList();
     } else {
       return [];
     }
