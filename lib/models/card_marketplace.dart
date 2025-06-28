@@ -44,11 +44,13 @@ class CardUser {
 
 class CardExpansion {
   final String nameEn;
+  final String code;
+  final int id;
 
-  CardExpansion({required this.nameEn});
+  CardExpansion({required this.nameEn, required this.code, required this.id});
 
   factory CardExpansion.fromJson(Map<String, dynamic> json) {
-    return CardExpansion(nameEn: json['name_en'] ?? '');
+    return CardExpansion(nameEn: json['name_en'] ?? '', code: json['code'] ?? '', id: json['id'] ?? '', );
   }
 }
 

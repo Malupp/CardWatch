@@ -30,6 +30,23 @@ class NotificationService {
     await _plugin.show(id, title, body, notificationDetails);
   }
 
+  static Future<void> showCustom({
+    required String title,
+    required String body,
+    int id = 100,
+  }) async {
+    const androidDetails = AndroidNotificationDetails(
+      'your_channel_id',
+      'your_channel_name',
+      channelDescription: 'your_channel_description',
+      importance: Importance.max,
+      priority: Priority.high,
+      showWhen: false,
+    );
+    const notificationDetails = NotificationDetails(android: androidDetails);
+    await _plugin.show(id, title, body, notificationDetails);
+  }
+
   static Future<void> showDelayed({
     int id = 1,
     String title = 'Notifica CardWatch (ritardata)',
