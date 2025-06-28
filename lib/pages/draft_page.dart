@@ -21,7 +21,7 @@ class _DraftPageState extends State<DraftPage> {
   final TextEditingController _searchController = TextEditingController();
 
   int _currentPage = 0;
-  final int _cardsPerPage = 20;
+  final int _cardsPerPage = 30;
 
   @override
   void initState() {

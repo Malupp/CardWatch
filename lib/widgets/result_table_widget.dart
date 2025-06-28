@@ -98,6 +98,24 @@ class _ResultTableWidgetState extends State<ResultTableWidget> {
           ),
         ),
         const SizedBox(height: 8),
+        if (_totalPages > 1)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: _currentPage > 0 ? () => _goToPage(_currentPage - 1) : null,
+                ),
+                Text('Pagina ${_currentPage + 1} di ${_totalPages == 0 ? 1 : _totalPages}'),
+                IconButton(
+                  icon: const Icon(Icons.arrow_forward),
+                  onPressed: (_currentPage < _totalPages - 1) ? () => _goToPage(_currentPage + 1) : null,
+                ),
+              ],
+            ),
+          ),
         Expanded(
           child: SingleChildScrollView(
             scrollDirection: Axis.vertical,
@@ -111,20 +129,6 @@ class _ResultTableWidgetState extends State<ResultTableWidget> {
               ),
             ),
           ),
-        ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: _currentPage > 0 ? () => _goToPage(_currentPage - 1) : null,
-            ),
-            Text('Pagina ${_currentPage + 1} di ${_totalPages == 0 ? 1 : _totalPages}'),
-            IconButton(
-              icon: const Icon(Icons.arrow_forward),
-              onPressed: (_currentPage < _totalPages - 1) ? () => _goToPage(_currentPage + 1) : null,
-            ),
-          ],
         ),
       ],
     );

@@ -295,6 +295,32 @@ class _ResultsPageState extends State<ResultsPage> {
                   CarouselWidget(items: _filteredCarouselImages),
                   const Divider(),
                 ],
+                // Controlli di paginazione spostati più in alto
+                if (_filteredCards.length > _cardsPerPage)
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.chevron_left),
+                          onPressed: _currentPage > 0
+                            ? () => setState(() => _currentPage--)
+                            : null,
+                        ),
+                        Text(
+                          'Pagina ${_currentPage + 1} di ${(_filteredCards.length / _cardsPerPage).ceil()}',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.chevron_right),
+                          onPressed: (_currentPage + 1) * _cardsPerPage < _filteredCards.length
+                            ? () => setState(() => _currentPage++)
+                            : null,
+                        ),
+                      ],
+                    ),
+                  ),
                 Expanded(
                   child: ListView.builder(
                     itemCount: _currentPageCards.length,
@@ -384,31 +410,6 @@ class _ResultsPageState extends State<ResultsPage> {
                     },
                   ),
                 ),
-                if (_filteredCards.length > _cardsPerPage)
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.chevron_left),
-                          onPressed: _currentPage > 0
-                            ? () => setState(() => _currentPage--)
-                            : null,
-                        ),
-                        Text(
-                          'Pagina ${_currentPage + 1} di ${(_filteredCards.length / _cardsPerPage).ceil()}',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.chevron_right),
-                          onPressed: (_currentPage + 1) * _cardsPerPage < _filteredCards.length
-                            ? () => setState(() => _currentPage++)
-                            : null,
-                        ),
-                      ],
-                    ),
-                  ),
               ],
             ),
     );
