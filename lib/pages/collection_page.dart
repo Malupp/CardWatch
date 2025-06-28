@@ -40,8 +40,8 @@ class _CollectionPageState extends State<CollectionPage> {
                         ),
                       )
                     : null,
-                  title: Text(card.expansion.nameEn),
-                  subtitle: Text('${card.user.username} • ${card.price.formatted}'),
+                  title: Text(card.propertiesHash['name'] ?? card.expansion.nameEn),
+                  subtitle: Text('${card.expansion.nameEn} • ${card.user.username} • ${card.price.formatted}'),
                   trailing: IconButton(
                     icon: const Icon(Icons.delete),
                     onPressed: () {

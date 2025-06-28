@@ -56,7 +56,17 @@ class _ResultsPageState extends State<ResultsPage> {
       List<CardMarketplace> cards = await MarketplaceService.getMarketCard(
         blueprint.id,
       );
-      cardsList.addAll(cards);
+      cardsList.addAll(cards.map((c) {
+        final props = Map<String, dynamic>.from(c.propertiesHash);
+        props['name'] = blueprint.name;
+        return CardMarketplace(
+          user: c.user,
+          expansion: c.expansion,
+          price: c.price,
+          propertiesHash: props,
+          quantity: c.quantity,
+        );
+      }));
     }
 
     // Debug: stampa tutte le condizioni uniche che arrivano dall'API
@@ -213,6 +223,7 @@ class _ResultsPageState extends State<ResultsPage> {
     final newProperties = Map<String, dynamic>.from(card.propertiesHash);
     if (imageUrl != null && imageUrl.isNotEmpty) {
       newProperties['imageUrl'] = imageUrl;
+      newProperties['imageNormalUrl'] = imageUrl;
     }
     return CardMarketplace(
       user: card.user,
@@ -228,12 +239,12 @@ class _ResultsPageState extends State<ResultsPage> {
     if (isInCollection) {
       LocalStorage().removeFromCollection(card);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${card.expansion.nameEn} rimossa dalla collezione')),
+        SnackBar(content: Text('${card.propertiesHash['name'] ?? card.expansion.nameEn} rimossa dalla collezione')),
       );
     } else {
       LocalStorage().addToCollection(_withImageUrl(card));
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${card.expansion.nameEn} aggiunta alla collezione')),
+        SnackBar(content: Text('${card.propertiesHash['name'] ?? card.expansion.nameEn} aggiunta alla collezione')),
       );
     }
     setState(() {});
@@ -244,12 +255,12 @@ class _ResultsPageState extends State<ResultsPage> {
     if (isInWatchlist) {
       LocalStorage().removeFromWatchlist(card);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${card.expansion.nameEn} rimossa dalla watchlist')),
+        SnackBar(content: Text('${card.propertiesHash['name'] ?? card.expansion.nameEn} rimossa dalla watchlist')),
       );
     } else {
       LocalStorage().addToWatchlist(_withImageUrl(card));
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${card.expansion.nameEn} aggiunta alla watchlist')),
+        SnackBar(content: Text('${card.propertiesHash['name'] ?? card.expansion.nameEn} aggiunta alla watchlist')),
       );
     }
     setState(() {});
@@ -324,8 +335,12 @@ class _ResultsPageState extends State<ResultsPage> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        card.expansion.nameEn,
+                                        card.propertiesHash['name'] ?? card.expansion.nameEn,
                                         style: const TextStyle(fontWeight: FontWeight.bold),
+                                      ),
+                                      Text(
+                                        card.expansion.nameEn,
+                                        style: const TextStyle(fontSize: 12),
                                       ),
                                       Text(
                                         '${card.user.username} • ${_getConditionLabel(card.condition)}${card.isFoil ? ' • Foil' : ''}',

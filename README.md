@@ -1,8 +1,17 @@
 # CardWatch
 
-Applicazione Flutter multipiattaforma per monitorare i prezzi e gestire le collezioni di carte da gioco.
+CardWatch is a Flutter application that allows you to browse trading cards and keep track of price drops.
 
 ## Getting Started
 
-Per informazioni su come configurare l'ambiente di sviluppo e avviare l'applicazione, consulta la
-[documentazione ufficiale di Flutter](https://docs.flutter.dev/).
+1. Install Flutter and run `flutter pub get`.
+2. Create a `.env` file in the project root with the following variables:
+   ```
+   BASE_SCRYFALL_API=https://api.scryfall.com
+   BASE_MARKETPLACE_API=<your marketplace api>
+   MARKETPLACE_TOKEN=<token>
+   ```
+3. Launch the app with `flutter run`.
+
+The app periodically checks the marketplace for lower prices and shows local notifications when a better offer is found.
+
