@@ -21,7 +21,7 @@ class _DraftPageState extends State<DraftPage> {
   final TextEditingController _searchController = TextEditingController();
 
   int _currentPage = 0;
-  final int _cardsPerPage = 30;
+  final int _cardsPerPage = 10;
 
   @override
   void initState() {
@@ -124,57 +124,63 @@ class _DraftPageState extends State<DraftPage> {
                 _loadingCards
                     ? const Expanded(child: Center(child: CircularProgressIndicator()))
                     : Expanded(
-                        child: ListView.builder(
-                          itemCount: _currentPageCards.length,
-                          itemBuilder: (context, index) {
-                            final card = _currentPageCards[index];
-                            return ListTile(
-                              dense: true,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                              leading: card.imageUrl.isNotEmpty
-                                  ? Image.network(
-                                      card.imageUrl,
-                                      width: 40,
-                                      height: 60,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (c, e, s) => const Icon(Icons.broken_image),
-                                    )
-                                  : null,
-                              title: Text(card.name, overflow: TextOverflow.ellipsis),
-                              onTap: () => Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => ResultsPage(query: card.name),
+                        child: Column(
+                          children: [
+                            if (_filteredCards.length > _cardsPerPage)
+                              Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.chevron_left),
+                                      onPressed: _currentPage > 0
+                                          ? () => setState(() => _currentPage--)
+                                          : null,
+                                    ),
+                                    Text(
+                                      "Pagina ${_currentPage + 1} di ${(_filteredCards.length / _cardsPerPage).ceil()}",
+                                      style: const TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.chevron_right),
+                                      onPressed: (_currentPage + 1) * _cardsPerPage < _filteredCards.length
+                                          ? () => setState(() => _currentPage++)
+                                          : null,
+                                    ),
+                                  ],
                                 ),
                               ),
-                            );
-                          },
+                            Expanded(
+                              child: ListView.builder(
+                                itemCount: _currentPageCards.length,
+                                itemBuilder: (context, index) {
+                                  final card = _currentPageCards[index];
+                                  return ListTile(
+                                    dense: true,
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                                    leading: card.imageUrl.isNotEmpty
+                                        ? Image.network(
+                                            card.imageUrl,
+                                            width: 36,
+                                            height: 54,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (c, e, s) => const Icon(Icons.broken_image),
+                                          )
+                                        : null,
+                                    title: Text(card.name, overflow: TextOverflow.ellipsis),
+                                    onTap: () => Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => ResultsPage(query: card.name),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                if (_filteredCards.length > _cardsPerPage)
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.chevron_left),
-                          onPressed: _currentPage > 0
-                              ? () => setState(() => _currentPage--)
-                              : null,
-                        ),
-                        Text(
-                          "Pagina ${_currentPage + 1} di ${(_filteredCards.length / _cardsPerPage).ceil()}",
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.chevron_right),
-                          onPressed: (_currentPage + 1) * _cardsPerPage < _filteredCards.length
-                              ? () => setState(() => _currentPage++)
-                              : null,
-                        ),
-                      ],
-                    ),
-                  ),
               ],
             ),
           ),

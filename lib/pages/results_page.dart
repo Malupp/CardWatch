@@ -343,12 +343,12 @@ class _ResultsPageState extends State<ResultsPage> {
                                     padding: const EdgeInsets.only(right: 8.0),
                                     child: Image.network(
                                       card.propertiesHash['imageUrl'],
-                                      width: 60,
-                                      height: 90,
+                                      width: 50,
+                                      height: 75,
                                       fit: BoxFit.cover,
                                       errorBuilder: (context, error, stackTrace) => Container(
-                                        width: 60,
-                                        height: 90,
+                                        width: 50,
+                                        height: 75,
                                         color: Colors.grey[200],
                                         child: const Center(
                                           child: Icon(Icons.broken_image, size: 30, color: Colors.grey),
