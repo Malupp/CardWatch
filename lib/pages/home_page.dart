@@ -48,7 +48,7 @@ class _HomePageState extends State<HomePage> {
               ),
               Positioned(
                 right: 16,
-                bottom: 100,
+                bottom: 80,
                 child: FloatingActionButton(
                   onPressed: _isLoading ? null : _handleRefresh,
                   tooltip: 'Refresh Cards',
