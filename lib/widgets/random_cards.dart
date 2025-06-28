@@ -54,6 +54,7 @@ class RandomCardsWidgetState extends State<RandomCardsWidget>
       expansion: CardExpansion(nameEn: card.expansion, code: '', id: 0),
       price: CardPrice(formatted: card.price),
       propertiesHash: {
+        'name': card.name,
         'condition': card.condition,
         'foil': card.isFoil,
         'signed': false,
