@@ -35,7 +35,7 @@ class _MainLayoutState extends State<MainLayout> {
           Positioned(
             left: 24,
             right: 24,
-            bottom: 0,
+            bottom: MediaQuery.of(context).padding.bottom + 20,
             child: BubbleNavbar(
               currentIndex: _currentIndex,
               onTap: (index) => setState(() => _currentIndex = index),
