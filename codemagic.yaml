@@ -9,6 +9,12 @@ workflows:
     scripts:
       - name: Flutter pub get
         script: flutter pub get
+      # Crea il file .env con le variabili d'ambiente
+      - name: Crea file .env
+        script: |
+          echo "BASE_MARKETPLACE_API=$BASE_MARKETPLACE_API" > .env
+          echo "MARKETPLACE_TOKEN=$MARKETPLACE_TOKEN" >> .env
+          echo "BASE_SCRYFALL_API=$BASE_SCRYFALL_API" >> .env
       - name: Build IPA
         script: flutter build ipa --release --no-codesign
     artifacts:
