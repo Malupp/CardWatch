@@ -338,24 +338,7 @@ class _ResultsPageState extends State<ResultsPage> {
                             padding: const EdgeInsets.all(8.0),
                             child: Row(
                               children: [
-                                if (card.propertiesHash['imageUrl'] != null && card.propertiesHash['imageUrl'].toString().isNotEmpty)
-                                  Padding(
-                                    padding: const EdgeInsets.only(right: 8.0),
-                                    child: Image.network(
-                                      card.propertiesHash['imageUrl'],
-                                      width: 50,
-                                      height: 75,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) => Container(
-                                        width: 50,
-                                        height: 75,
-                                        color: Colors.grey[200],
-                                        child: const Center(
-                                          child: Icon(Icons.broken_image, size: 30, color: Colors.grey),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
+                                _buildCardImage(card),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -413,5 +396,30 @@ class _ResultsPageState extends State<ResultsPage> {
               ],
             ),
     );
+  }
+
+  Widget _buildCardImage(CardMarketplace card) {
+    final imageUrl = _getImageUrlForCard(card);
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(right: 8.0),
+        child: Image.network(
+          imageUrl,
+          width: 50,
+          height: 75,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => Container(
+            width: 50,
+            height: 75,
+            color: Colors.grey[200],
+            child: const Center(
+              child: Icon(Icons.broken_image, size: 30, color: Colors.grey),
+            ),
+          ),
+        ),
+      );
+    } else {
+      return Container();
+    }
   }
 }

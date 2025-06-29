@@ -73,10 +73,76 @@ class ScryfallApi {
 
     if (res.statusCode == 200) {
       final data = json.decode(res.body)['data'] as List<dynamic>;
-      return data.map((c) => CardModel.fromScryfallJson(c)).toList();
+      final cards = <CardModel>[];
+      
+      for (final cardJson in data) {
+        try {
+          final card = CardModel.fromScryfallJson(cardJson);
+          
+          // Se l'immagine è vuota, prova a cercare un'immagine alternativa
+          if (card.imageUrl.isEmpty && card.imageNormalUrl == null) {
+            final alternativeImage = await _tryGetAlternativeImage(card.name, setCode);
+            if (alternativeImage.isNotEmpty) {
+              // Crea una nuova carta con l'immagine alternativa
+              final updatedCard = CardModel(
+                name: card.name,
+                imageUrl: alternativeImage,
+                imageNormalUrl: card.imageNormalUrl,
+                expansion: card.expansion,
+                price: card.price,
+                isFoil: card.isFoil,
+                condition: card.condition,
+                username: card.username,
+                quantity: card.quantity,
+                graded: card.graded,
+                artist: card.artist,
+                manaCost: card.manaCost,
+                typeLine: card.typeLine,
+                oracleText: card.oracleText,
+                power: card.power,
+                toughness: card.toughness,
+              );
+              cards.add(updatedCard);
+            } else {
+              cards.add(card);
+            }
+          } else {
+            cards.add(card);
+          }
+        } catch (e) {
+          print('Errore nel parsing della carta: $e');
+          // Continua con la prossima carta
+        }
+      }
+      
+      return cards;
     } else {
       return [];
     }
+  }
+
+  // Metodo per cercare un'immagine alternativa quando quella principale non è disponibile
+  static Future<String> _tryGetAlternativeImage(String cardName, String setCode) async {
+    try {
+      // Prova a cercare l'immagine con una query più specifica
+      final url = Uri.parse('$_baseUrl/cards/search?q=!"$cardName"+e:$setCode');
+      final res = await http.get(url);
+
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body)['data'] as List<dynamic>;
+        if (data.isNotEmpty) {
+          final card = data.first;
+          return card['image_uris']?['art_crop'] ?? 
+                 card['image_uris']?['normal'] ?? 
+                 card['card_faces']?[0]['image_uris']?['art_crop'] ??
+                 card['card_faces']?[0]['image_uris']?['normal'] ?? '';
+        }
+      }
+    } catch (e) {
+      print('Errore nel recupero immagine alternativa per $cardName: $e');
+    }
+    
+    return '';
   }
 
   static Future<List<CardModel>> fetchRandomCards(int count) async {

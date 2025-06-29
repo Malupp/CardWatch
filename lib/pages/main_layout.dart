@@ -27,10 +27,10 @@ class _MainLayoutState extends State<MainLayout> {
     super.initState();
     _pages = [
       HomePage(key: _homePageKey),
-      CollectionPage(onNavigate: _onPageSelected),
-      WatchlistPage(onNavigate: _onPageSelected),
-      DraftPage(onNavigate: _onPageSelected),
-      ProfilePage(onNavigate: _onPageSelected),
+      CollectionPage(onNavigate: (index) => setState(() => _currentIndex = index)),
+      WatchlistPage(onNavigate: (index) => setState(() => _currentIndex = index)),
+      DraftPage(onNavigate: (index) => setState(() => _currentIndex = index)),
+      ProfilePage(onNavigate: (index) => setState(() => _currentIndex = index)),
     ];
   }
 
