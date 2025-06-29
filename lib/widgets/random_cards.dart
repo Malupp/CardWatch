@@ -48,10 +48,10 @@ class RandomCardsWidgetState extends State<RandomCardsWidget>
   // Getter per lo stato di caricamento
   bool get isLoading => _isLoading;
 
-  CardMarketplace _toMarketplace(CardModel card) {
+  CardMarketplace _toMarketplace(CardModel card, int blueprintId) {
     return CardMarketplace(
       user: CardUser(username: card.username),
-      expansion: CardExpansion(nameEn: card.expansion, code: '', id: 0),
+      expansion: CardExpansion(nameEn: card.expansion, code: '', id: blueprintId),
       price: CardPrice(formatted: card.price),
       propertiesHash: {
         'name': card.name,
@@ -66,8 +66,10 @@ class RandomCardsWidgetState extends State<RandomCardsWidget>
     );
   }
 
-  void _addToCollection(CardModel card) {
-    LocalStorage().addToCollection(_toMarketplace(card));
+  Future<void> _addToCollection(CardModel card) async {
+    final blueprints = await MarketplaceService.getBlueprintList(card.name);
+    final blueprintId = blueprints.isNotEmpty ? blueprints.first.id : 0;
+    LocalStorage().addToCollection(_toMarketplace(card, blueprintId));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('${card.name} aggiunta alla collezione'),
@@ -75,8 +77,10 @@ class RandomCardsWidgetState extends State<RandomCardsWidget>
     );
   }
 
-  void _addToWatchlist(CardModel card) {
-    LocalStorage().addToWatchlist(_toMarketplace(card));
+  Future<void> _addToWatchlist(CardModel card) async {
+    final blueprints = await MarketplaceService.getBlueprintList(card.name);
+    final blueprintId = blueprints.isNotEmpty ? blueprints.first.id : 0;
+    LocalStorage().addToWatchlist(_toMarketplace(card, blueprintId));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('${card.name} aggiunta alla watchlist'),
