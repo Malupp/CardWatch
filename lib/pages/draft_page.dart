@@ -3,9 +3,15 @@ import '../services/scryfall_api.dart';
 import '../models/scryfall_set.dart';
 import '../models/card_model.dart';
 import 'results_page.dart';
+import '../widgets/app_drawer.dart';
 
 class DraftPage extends StatefulWidget {
-  const DraftPage({super.key});
+  final Function(int) onNavigate;
+
+  const DraftPage({
+    super.key,
+    required this.onNavigate,
+  });
 
   @override
   State<DraftPage> createState() => _DraftPageState();
@@ -78,21 +84,18 @@ class _DraftPageState extends State<DraftPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        AppBar(
-          title: const Text('Modalità Draft'),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-        ),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                _loadingSets
-                    ? const CircularProgressIndicator()
-                    : DropdownButtonFormField<ScryfallSet>(
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Modalità Draft'),
+      ),
+      drawer: AppDrawer(currentIndex: 3, onSelect: widget.onNavigate),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            _loadingSets
+                ? const CircularProgressIndicator()
+                : DropdownButtonFormField<ScryfallSet>(
                         value: _selectedSet,
                         hint: const Text('Seleziona espansione'),
                         items: _sets
@@ -181,11 +184,13 @@ class _DraftPageState extends State<DraftPage> {
                           ],
                         ),
                       ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
         ),
-      ],
-    );
+      );
   }
 }

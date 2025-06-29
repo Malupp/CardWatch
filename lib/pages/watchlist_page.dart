@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import '../services/local_storage.dart';
 import '../models/card_marketplace.dart';
+import '../widgets/app_drawer.dart';
 
 class WatchlistPage extends StatefulWidget {
-  const WatchlistPage({super.key});
+  final Function(int) onNavigate;
+
+  const WatchlistPage({
+    super.key,
+    required this.onNavigate,
+  });
 
   @override
   State<WatchlistPage> createState() => _WatchlistPageState();
@@ -15,6 +21,7 @@ class _WatchlistPageState extends State<WatchlistPage> {
     final watchlist = LocalStorage().watchlist;
     return Scaffold(
       appBar: AppBar(title: const Text('Watchlist')),
+      drawer: AppDrawer(currentIndex: 2, onSelect: widget.onNavigate),
       body: watchlist.isEmpty
           ? const Center(child: Text('Nessuna carta nella watchlist'))
           : ListView.builder(

@@ -13,7 +13,7 @@ class BubbleNavbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(30),
@@ -44,7 +44,7 @@ class BubbleNavbar extends StatelessWidget {
     return GestureDetector(
       onTap: () => onTap(index),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: isSelected ? Colors.blue : Colors.transparent,
           borderRadius: BorderRadius.circular(25),
