@@ -20,7 +20,16 @@ class _CollectionPageState extends State<CollectionPage> {
   Widget build(BuildContext context) {
     final collection = LocalStorage().collection;
     return Scaffold(
-      appBar: AppBar(title: const Text('La Tua Collezione')),
+      appBar: AppBar(
+        leadingWidth: 64,
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, size: 32),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
+        title: const Text('La Tua Collezione'),
+      ),
       drawer: AppDrawer(currentIndex: 1, onSelect: widget.onNavigate),
       body: collection.isEmpty
           ? const Center(child: Text('Nessuna carta nella collezione'))

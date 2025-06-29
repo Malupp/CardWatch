@@ -86,6 +86,13 @@ class _DraftPageState extends State<DraftPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leadingWidth: 64,
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, size: 32),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
         title: const Text('Modalità Draft'),
       ),
       drawer: AppDrawer(currentIndex: 3, onSelect: widget.onNavigate),
@@ -95,18 +102,37 @@ class _DraftPageState extends State<DraftPage> {
           children: [
             _loadingSets
                 ? const CircularProgressIndicator()
-                : DropdownButtonFormField<ScryfallSet>(
-                    value: _selectedSet,
-                    hint: const Text('Seleziona espansione'),
-                    items: _sets
-                        .map((s) => DropdownMenuItem(
-                              value: s,
-                              child: Text(s.name),
-                            ))
-                        .toList(),
-                    onChanged: (value) {
-                      setState(() => _selectedSet = value);
-                      if (value != null) _loadCardsForSet(value.code);
+                : Autocomplete<ScryfallSet>(
+                    initialValue: _selectedSet != null
+                        ? TextEditingValue(text: _selectedSet!.name)
+                        : const TextEditingValue(),
+                    optionsBuilder: (TextEditingValue value) {
+                      if (value.text.isEmpty) {
+                        return const Iterable<ScryfallSet>.empty();
+                      }
+                      return _sets.where((s) =>
+                          s.name.toLowerCase().contains(value.text.toLowerCase()));
+                    },
+                    displayStringForOption: (s) => s.name,
+                    fieldViewBuilder:
+                        (context, textController, focusNode, onFieldSubmitted) {
+                      return TextField(
+                        controller: textController,
+                        focusNode: focusNode,
+                        decoration: InputDecoration(
+                          labelText: 'Cerca espansione',
+                          prefixIcon: const Icon(Icons.search),
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                              vertical: 8, horizontal: 12),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(30)),
+                        ),
+                      );
+                    },
+                    onSelected: (s) {
+                      setState(() => _selectedSet = s);
+                      _loadCardsForSet(s.code);
                     },
                   ),
             const SizedBox(height: 16),
