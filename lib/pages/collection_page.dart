@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import '../services/local_storage.dart';
 import '../models/card_marketplace.dart';
+import '../widgets/app_drawer.dart';
 
 class CollectionPage extends StatefulWidget {
-  const CollectionPage({super.key});
+  final Function(int) onNavigate;
+
+  const CollectionPage({
+    super.key,
+    required this.onNavigate,
+  });
 
   @override
   State<CollectionPage> createState() => _CollectionPageState();
@@ -15,6 +21,7 @@ class _CollectionPageState extends State<CollectionPage> {
     final collection = LocalStorage().collection;
     return Scaffold(
       appBar: AppBar(title: const Text('La Tua Collezione')),
+      drawer: AppDrawer(currentIndex: 1, onSelect: widget.onNavigate),
       body: collection.isEmpty
           ? const Center(child: Text('Nessuna carta nella collezione'))
           : ListView.builder(

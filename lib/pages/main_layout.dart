@@ -18,15 +18,19 @@ class _MainLayoutState extends State<MainLayout> {
   final GlobalKey<HomePageState> _homePageKey = GlobalKey<HomePageState>();
   late final List<Widget> _pages;
 
+  void _onPageSelected(int index) {
+    setState(() => _currentIndex = index);
+  }
+
   @override
   void initState() {
     super.initState();
     _pages = [
       HomePage(key: _homePageKey),
-      const CollectionPage(),
-      const WatchlistPage(),
-      const DraftPage(),
-      const ProfilePage(),
+      CollectionPage(onNavigate: _onPageSelected),
+      WatchlistPage(onNavigate: _onPageSelected),
+      DraftPage(onNavigate: _onPageSelected),
+      ProfilePage(onNavigate: _onPageSelected),
     ];
   }
 
@@ -38,15 +42,16 @@ class _MainLayoutState extends State<MainLayout> {
           SafeArea(
             child: _pages[_currentIndex],
           ),
-          Positioned(
-            left: 24,
-            right: 24,
-            bottom: MediaQuery.of(context).padding.bottom + 20,
-            child: BubbleNavbar(
-              currentIndex: _currentIndex,
-              onTap: (index) => setState(() => _currentIndex = index),
+          if (_currentIndex == 0)
+            Positioned(
+              left: 24,
+              right: 24,
+              bottom: MediaQuery.of(context).padding.bottom + 20,
+              child: BubbleNavbar(
+                currentIndex: _currentIndex,
+                onTap: _onPageSelected,
+              ),
             ),
-          ),
           if (_currentIndex == 0)
             Positioned(
               right: 16,

@@ -1,35 +1,36 @@
 import 'package:flutter/material.dart';
+import '../widgets/app_drawer.dart';
 
 class ProfilePage extends StatelessWidget {
-  const ProfilePage({super.key});
+  final Function(int) onNavigate;
+
+  const ProfilePage({
+    super.key,
+    required this.onNavigate,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        AppBar(
-          title: const Text('Profilo'),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.settings),
-              onPressed: () {},
-            ),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Profilo'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {},
+          ),
+        ],
+      ),
+      drawer: AppDrawer(currentIndex: 4, onSelect: onNavigate),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            _buildProfileHeader(),
+            _buildStatsSection(),
+            _buildProfileActions(),
           ],
         ),
-        Expanded(
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                _buildProfileHeader(),
-                _buildStatsSection(),
-                _buildProfileActions(),
-              ],
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
