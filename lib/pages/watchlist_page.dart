@@ -20,7 +20,16 @@ class _WatchlistPageState extends State<WatchlistPage> {
   Widget build(BuildContext context) {
     final watchlist = LocalStorage().watchlist;
     return Scaffold(
-      appBar: AppBar(title: const Text('Watchlist')),
+      appBar: AppBar(
+        leadingWidth: 64,
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, size: 32),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
+        title: const Text('Watchlist'),
+      ),
       drawer: AppDrawer(currentIndex: 2, onSelect: widget.onNavigate),
       body: watchlist.isEmpty
           ? const Center(child: Text('Nessuna carta nella watchlist'))
