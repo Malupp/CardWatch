@@ -29,7 +29,7 @@ class BubbleNavbar extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           _buildNavItem(0, Icons.home, 'Home'),
-          _buildNavItem(1, Icons.collections, 'Collection'),
+          _buildNavItem(1, Icons.collections_bookmark, 'Collection'),
           _buildNavItem(2, Icons.favorite, 'Watchlist'),
           _buildNavItem(3, Icons.shuffle, 'Draft'),
           _buildNavItem(4, Icons.person, 'Profilo'),

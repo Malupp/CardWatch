@@ -29,7 +29,7 @@ class AppDrawer extends StatelessWidget {
             ),
           ),
           _buildItem(context, Icons.home, 'Home', 0),
-          _buildItem(context, Icons.collections, 'Collection', 1),
+          _buildItem(context, Icons.collections_bookmark, 'Collection', 1),
           _buildItem(context, Icons.favorite, 'Watchlist', 2),
           _buildItem(context, Icons.shuffle, 'Draft', 3),
           _buildItem(context, Icons.person, 'Profilo', 4),

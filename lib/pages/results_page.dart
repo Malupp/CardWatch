@@ -3,7 +3,6 @@ import '../models/card_marketplace.dart';
 import '../models/carousel_item.dart';
 import '../services/marketplace_service.dart';
 import '../widgets/carousel_widget.dart';
-import '../widgets/custom_card_widget.dart';
 import '../services/scryfall_api.dart';
 import '../services/local_storage.dart';
 
@@ -211,7 +210,16 @@ class _ResultsPageState extends State<ResultsPage> {
   }
 
   String? _getImageUrlForCard(CardMarketplace card) {
-    // Cerca l'immagine normal dal carousel per il set corrispondente
+    final imageNormalUrl = card.propertiesHash['imageNormalUrl']?.toString();
+    if (imageNormalUrl != null && imageNormalUrl.isNotEmpty) {
+      return imageNormalUrl;
+    }
+
+    final imageUrl = card.propertiesHash['imageUrl']?.toString();
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      return imageUrl;
+    }
+
     final carouselItem = _allCarouselImages.firstWhere(
       (item) => item.description == card.expansion.nameEn,
       orElse: () => CarouselItem(url: '', description: ''),
@@ -419,26 +427,32 @@ class _ResultsPageState extends State<ResultsPage> {
 
   Widget _buildCardImage(CardMarketplace card) {
     final imageUrl = _getImageUrlForCard(card);
-    if (imageUrl != null && imageUrl.isNotEmpty) {
-      return Padding(
-        padding: const EdgeInsets.only(right: 8.0),
-        child: Image.network(
-          imageUrl,
-          width: 50,
-          height: 75,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => Container(
-            width: 50,
-            height: 75,
-            color: Colors.grey[200],
-            child: const Center(
-              child: Icon(Icons.broken_image, size: 30, color: Colors.grey),
-            ),
-          ),
-        ),
-      );
-    } else {
-      return Container();
-    }
+    return Padding(
+      padding: const EdgeInsets.only(right: 8.0),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(6),
+        child: imageUrl != null && imageUrl.isNotEmpty
+            ? Image.network(
+                imageUrl,
+                width: 50,
+                height: 75,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) =>
+                    _buildImagePlaceholder(),
+              )
+            : _buildImagePlaceholder(),
+      ),
+    );
+  }
+
+  Widget _buildImagePlaceholder() {
+    return Container(
+      width: 50,
+      height: 75,
+      color: Colors.grey[200],
+      child: const Center(
+        child: Icon(Icons.broken_image, size: 30, color: Colors.grey),
+      ),
+    );
   }
 }

@@ -16,6 +16,20 @@ class CollectionPage extends StatefulWidget {
 }
 
 class _CollectionPageState extends State<CollectionPage> {
+  String? _getImageUrl(CardMarketplace card) {
+    final imageNormalUrl = card.propertiesHash['imageNormalUrl']?.toString();
+    if (imageNormalUrl != null && imageNormalUrl.isNotEmpty) {
+      return imageNormalUrl;
+    }
+
+    final imageUrl = card.propertiesHash['imageUrl']?.toString();
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      return imageUrl;
+    }
+
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final collection = LocalStorage().collection;
@@ -37,12 +51,11 @@ class _CollectionPageState extends State<CollectionPage> {
               itemCount: collection.length,
               itemBuilder: (context, index) {
                 final card = collection[index];
-                final isInCollection = LocalStorage().collection.any((c) => c.expansion.nameEn == card.expansion.nameEn && c.user.username == card.user.username);
-                final isInWatchlist = LocalStorage().watchlist.any((c) => c.expansion.nameEn == card.expansion.nameEn && c.user.username == card.user.username);
+                final imageUrl = _getImageUrl(card);
                 return ListTile(
-                  leading: (card.propertiesHash['imageUrl'] != null && card.propertiesHash['imageUrl'].toString().isNotEmpty)
+                  leading: imageUrl != null
                     ? Image.network(
-                        card.propertiesHash['imageUrl'],
+                        imageUrl,
                         width: 60,
                         height: 90,
                         fit: BoxFit.cover,
@@ -67,12 +80,6 @@ class _CollectionPageState extends State<CollectionPage> {
                     },
                   ),
                   onTap: () async {
-                    String? imageUrl = card.propertiesHash['imageUrl'];
-                    if (imageUrl == null || !imageUrl.contains('/normal/')) {
-                      try {
-                        // Qui puoi usare ScryfallApi.getCardsImageByExpansionCode o una funzione simile
-                      } catch (e) {}
-                    }
                     showDialog(
                       context: context,
                       builder: (context) => AlertDialog(
@@ -81,11 +88,11 @@ class _CollectionPageState extends State<CollectionPage> {
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (card.propertiesHash['imageNormalUrl'] != null && card.propertiesHash['imageNormalUrl'].toString().isNotEmpty)
+                            if (imageUrl != null)
                               Padding(
                                 padding: const EdgeInsets.only(bottom: 8.0),
                                 child: Image.network(
-                                  card.propertiesHash['imageNormalUrl'],
+                                  imageUrl,
                                   height: 250,
                                   fit: BoxFit.contain,
                                 ),
@@ -111,11 +118,4 @@ class _CollectionPageState extends State<CollectionPage> {
     );
   }
 
-  void _addToCollection(CardMarketplace card) {
-    // Implementa la logica per aggiungere la carta alla collezione
-  }
-
-  void _addToWatchlist(CardMarketplace card) {
-    // Implementa la logica per aggiungere la carta alla watchlist
-  }
 }

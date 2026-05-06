@@ -47,7 +47,11 @@ class ScryfallApi {
 
     if (res.statusCode == 200) {
       final data = json.decode(res.body);
-      return data['image_uris']?['art_crop'];
+      return data['image_uris']?['normal'] ??
+          data['image_uris']?['art_crop'] ??
+          data['card_faces']?[0]?['image_uris']?['normal'] ??
+          data['card_faces']?[0]?['image_uris']?['art_crop'] ??
+          '';
     } else {
       return '';
     }
