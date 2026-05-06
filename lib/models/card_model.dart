@@ -37,8 +37,9 @@ class CardModel {
 
   // Factory per dati da Scryfall API
   factory CardModel.fromScryfallJson(Map<String, dynamic> json) {
-    final artCrop = json['image_uris']?['art_crop'] ?? '';
-    final normal = json['image_uris']?['normal'] ?? '';
+    final imageUris = json['image_uris'] ?? json['card_faces']?[0]?['image_uris'];
+    final artCrop = imageUris?['art_crop'] ?? '';
+    final normal = imageUris?['normal'] ?? '';
     final price = json['prices']?['eur'] != null ? '${json['prices']['eur']} €' : 'N/A';
     final priceFoil = json['prices']?['eur_foil'] != null ? '${json['prices']['eur_foil']} €' : 'N/A';
 

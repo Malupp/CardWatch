@@ -22,20 +22,31 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
   await NotificationService.init();
-  await PriceAlertService.checkForLowerPrices();
-  await Workmanager().initialize(
-    callbackDispatcher,
-    isInDebugMode: false,
-  );
-  await Workmanager().registerPeriodicTask(
-    '1',
-    priceAlertTask,
-    frequency: const Duration(minutes: 30),
-    initialDelay: const Duration(minutes: 1),
-    constraints: Constraints(
-      networkType: NetworkType.connected,
-    ),
-  );
+
+  try {
+    await PriceAlertService.checkForLowerPrices();
+  } catch (e) {
+    debugPrint('Controllo prezzi iniziale non riuscito: $e');
+  }
+
+  try {
+    await Workmanager().initialize(
+      callbackDispatcher,
+      isInDebugMode: false,
+    );
+    await Workmanager().registerPeriodicTask(
+      '1',
+      priceAlertTask,
+      frequency: const Duration(minutes: 30),
+      initialDelay: const Duration(minutes: 1),
+      constraints: Constraints(
+        networkType: NetworkType.connected,
+      ),
+    );
+  } catch (e) {
+    debugPrint('Workmanager non inizializzato: $e');
+  }
+
   runApp(const MyApp());
 }
 

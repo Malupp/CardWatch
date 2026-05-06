@@ -13,10 +13,11 @@ class RandomCardsWidget extends StatefulWidget {
   State<RandomCardsWidget> createState() => RandomCardsWidgetState();
 }
 
-class RandomCardsWidgetState extends State<RandomCardsWidget> 
+class RandomCardsWidgetState extends State<RandomCardsWidget>
     with AutomaticKeepAliveClientMixin {
   List<CardModel> _cards = [];
   bool _isLoading = true;
+  String? _errorMessage;
 
   @override
   bool get wantKeepAlive => true; // Mantiene il widget in memoria
@@ -29,15 +30,27 @@ class RandomCardsWidgetState extends State<RandomCardsWidget>
 
   Future<void> _loadCards() async {
     setState(() => _isLoading = true);
-    
-    final cards = await UnifiedCardService.getUnifiedCards(count: 5);
-    
-    // Controllo se il widget è ancora montato prima di chiamare setState
-    if (mounted) {
+
+    try {
+      final cards = await UnifiedCardService.getUnifiedCards(count: 5);
+
+      if (!mounted) return;
       setState(() {
         _cards = cards;
-        _isLoading = false;
+        _errorMessage = cards.isEmpty
+            ? 'Nessuna carta caricata. Controlla connessione, permessi rete e API.'
+            : null;
       });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _cards = [];
+        _errorMessage = 'Errore nel caricamento delle carte: $e';
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -98,7 +111,7 @@ class RandomCardsWidgetState extends State<RandomCardsWidget>
   @override
   Widget build(BuildContext context) {
     super.build(context); // Richiesto per AutomaticKeepAliveClientMixin
-    
+
     if (_isLoading) {
       return const Center(
         child: Column(
@@ -107,6 +120,28 @@ class RandomCardsWidgetState extends State<RandomCardsWidget>
             CircularProgressIndicator(),
             SizedBox(height: 16),
             Text('Caricamento carte...'),
+          ],
+        ),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off, size: 48, color: Colors.grey),
+            const SizedBox(height: 12),
+            Text(
+              _errorMessage!,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: refreshCards,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Riprova'),
+            ),
           ],
         ),
       );

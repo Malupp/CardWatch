@@ -5,13 +5,15 @@ import 'scryfall_api.dart';
 import 'marketplace_service.dart';
 
 class UnifiedCardService {
+  static const Duration _requestTimeout = Duration(seconds: 12);
+
   /// Ottiene carte combinate da entrambe le API
   static Future<List<CardModel>> getUnifiedCards({
     required int count,
     String? searchQuery,
   }) async {
     List<CardModel> cards = [];
-    
+
     if (searchQuery != null && searchQuery.isNotEmpty) {
       // Ricerca specifica
       cards = await _searchCards(searchQuery);
@@ -19,7 +21,7 @@ class UnifiedCardService {
       // Carte random
       cards = await _getRandomCards(count);
     }
-    
+
     return cards;
   }
 
@@ -31,10 +33,10 @@ class UnifiedCardService {
       try {
         // Prima ottieni i dati base da Scryfall
         final scryfallCard = await _getRandomScryfallCard();
-        
+
         // Poi prova a ottenere dati aggiuntivi dal marketplace
         final enrichedCard = await _enrichCardWithMarketplaceData(scryfallCard);
-        
+
         cards.add(enrichedCard);
       } catch (e) {
         print('Errore nel recupero carta random: $e');
@@ -47,7 +49,7 @@ class UnifiedCardService {
   /// Ottiene una carta random da Scryfall
   static Future<CardModel> _getRandomScryfallCard() async {
     final url = Uri.parse('https://api.scryfall.com/cards/random');
-    final res = await http.get(url);
+    final res = await http.get(url).timeout(_requestTimeout);
 
     if (res.statusCode == 200) {
       final cardJson = json.decode(res.body);

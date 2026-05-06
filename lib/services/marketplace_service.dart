@@ -8,6 +8,8 @@ import '../models/card_marketplace.dart';
 import '../models/enums/card_game_id.dart';
 
 class MarketplaceService {
+  static const Duration _requestTimeout = Duration(seconds: 12);
+
   static String get _baseUrl => dotenv.env['BASE_MARKETPLACE_API'] ?? '';
   static String get _token => dotenv.env['MARKETPLACE_TOKEN'] ?? '';
 
@@ -19,12 +21,11 @@ class MarketplaceService {
   // Equivalente di getBlueprintList
   static Future<List<CardBlueprint>> getBlueprintList(String query) async {
     try {
-      
       final url = '$_baseUrl/blueprints?game_id=${CardGameId.MAGIC.value}&name=$query';
       final response = await http.get(
         Uri.parse(url),
         headers: _headers,
-      );
+      ).timeout(_requestTimeout);
 
       if (response.statusCode == 200) {
         final List<dynamic> jsonList = json.decode(response.body);
@@ -44,7 +45,7 @@ class MarketplaceService {
       final response = await http.get(
         Uri.parse(url),
         headers: _headers,
-      );
+      ).timeout(_requestTimeout);
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonResponse = json.decode(response.body);
