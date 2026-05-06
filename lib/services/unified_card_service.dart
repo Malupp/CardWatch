@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/card_model.dart';
@@ -47,14 +48,24 @@ class UnifiedCardService {
   /// Ottiene una carta random da Scryfall
   static Future<CardModel> _getRandomScryfallCard() async {
     final url = Uri.parse('https://api.scryfall.com/cards/random');
-    final res = await http.get(url);
 
-    if (res.statusCode == 200) {
-      final cardJson = json.decode(res.body);
-      return CardModel.fromScryfallJson(cardJson);
-    } else {
+    for (int attempt = 0; attempt < 3; attempt++) {
+      final res = await http.get(url).timeout(const Duration(seconds: 10));
+
+      if (res.statusCode == 200) {
+        final cardJson = json.decode(res.body);
+        return CardModel.fromScryfallJson(cardJson);
+      }
+
+      if (res.statusCode == 429 || res.statusCode >= 500) {
+        await Future.delayed(Duration(milliseconds: 300 * (attempt + 1)));
+        continue;
+      }
+
       throw Exception('Errore nel fetch della carta random: ${res.statusCode}');
     }
+
+    throw Exception('Errore nel fetch della carta random: troppi tentativi falliti');
   }
 
   /// Arricchisce una carta con dati dal marketplace
