@@ -12,6 +12,7 @@ class MarketplaceService {
 
   static String get _baseUrl => dotenv.env['BASE_MARKETPLACE_API'] ?? '';
   static String get _token => dotenv.env['MARKETPLACE_TOKEN'] ?? '';
+  static bool get _isConfigured => _baseUrl.isNotEmpty && _token.isNotEmpty;
 
   static Map<String, String> get _headers => {
     'Authorization': 'Bearer $_token',
@@ -20,6 +21,8 @@ class MarketplaceService {
 
   // Equivalente di getBlueprintList
   static Future<List<CardBlueprint>> getBlueprintList(String query) async {
+    if (!_isConfigured) return [];
+
     try {
       final url = '$_baseUrl/blueprints?game_id=${CardGameId.MAGIC.value}&name=$query';
       final response = await http.get(
@@ -40,6 +43,8 @@ class MarketplaceService {
 
   // Equivalente di getMarketCard
   static Future<List<CardMarketplace>> getMarketCard(int blueprintId) async {
+    if (!_isConfigured) return [];
+
     try {
       final url = '$_baseUrl/marketplace/products?blueprint_id=$blueprintId';
       final response = await http.get(
