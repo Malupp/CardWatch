@@ -50,10 +50,11 @@ class UnifiedCardService {
   /// Ottiene una carta random da Scryfall
   static Future<CardModel> _getRandomScryfallCard() async {
     final url = Uri.parse('https://api.scryfall.com/cards/random');
-    final res = await http.get(url).timeout(_requestTimeout);
 
     for (int attempt = 0; attempt < 3; attempt++) {
-      final res = await http.get(url).timeout(const Duration(seconds: 10));
+      final res = await http
+          .get(url, headers: ScryfallApi.headers)
+          .timeout(_requestTimeout);
 
       if (res.statusCode == 200) {
         final cardJson = json.decode(res.body);
@@ -65,7 +66,9 @@ class UnifiedCardService {
         continue;
       }
 
-      throw Exception('Errore nel fetch della carta random: ${res.statusCode}');
+      throw Exception(
+        'Errore nel fetch della carta random: ${res.statusCode} - ${res.body}',
+      );
     }
 
     throw Exception('Errore nel fetch della carta random: troppi tentativi falliti');

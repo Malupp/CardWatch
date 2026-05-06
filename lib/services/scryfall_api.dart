@@ -6,11 +6,26 @@ import '../models/scryfall_set.dart';
 import 'marketplace_service.dart';
 
 class ScryfallApi {
-  static String get _baseUrl => dotenv.env['BASE_SCRYFALL_API'] ?? '';
+  static Map<String, String> get headers => {
+        'User-Agent': 'CardWatch/${dotenv.env['VERSION'] ?? '1.0'}',
+        'Accept': 'application/json;q=0.9,*/*;q=0.8',
+      };
+
+  static String get _baseUrl {
+    final configured = dotenv.env['BASE_SCRYFALL_API'] ?? 'https://api.scryfall.com';
+    return configured.replaceFirst(RegExp(r'/+$'), '');
+  }
+
+  static Uri _uri(String path, [Map<String, String>? queryParameters]) {
+    final uri = Uri.parse('$_baseUrl$path');
+    return queryParameters == null
+        ? uri
+        : uri.replace(queryParameters: queryParameters);
+  }
 
   static Future<List<String>> fetchSuggestions(String query) async {
-    final url = Uri.parse('$_baseUrl/cards/autocomplete?q=$query');
-    final res = await http.get(url);
+    final url = _uri('/cards/autocomplete', {'q': query});
+    final res = await http.get(url, headers: headers);
 
     if (res.statusCode == 200) {
       final jsonBody = json.decode(res.body);
@@ -24,10 +39,11 @@ class ScryfallApi {
     String cardName,
     String expansionCode,
   ) async {
-    final url = Uri.parse(
-      '$_baseUrl/cards/named?exact=$cardName&set=$expansionCode',
-    );
-    final res = await http.get(url);
+    final url = _uri('/cards/named', {
+      'exact': cardName,
+      'set': expansionCode,
+    });
+    final res = await http.get(url, headers: headers);
 
     if (res.statusCode == 200) {
       final data = json.decode(res.body);
@@ -38,8 +54,8 @@ class ScryfallApi {
   }
 
   static Future<List<String>> fetchCardImages(String query) async {
-    final url = Uri.parse('$_baseUrl/cards/search?q=$query');
-    final res = await http.get(url);
+    final url = _uri('/cards/search', {'q': query});
+    final res = await http.get(url, headers: headers);
 
     if (res.statusCode == 200) {
       final data = json.decode(res.body)['data'];
@@ -56,8 +72,8 @@ class ScryfallApi {
   }
 
   static Future<List<ScryfallSet>> fetchSets() async {
-    final url = Uri.parse('$_baseUrl/sets');
-    final res = await http.get(url);
+    final url = _uri('/sets');
+    final res = await http.get(url, headers: headers);
 
     if (res.statusCode == 200) {
       final data = json.decode(res.body)['data'] as List<dynamic>;
@@ -68,8 +84,8 @@ class ScryfallApi {
   }
 
   static Future<List<CardModel>> fetchCardsBySet(String setCode) async {
-    final url = Uri.parse('$_baseUrl/cards/search?q=e%3A$setCode');
-    final res = await http.get(url);
+    final url = _uri('/cards/search', {'q': 'e:$setCode'});
+    final res = await http.get(url, headers: headers);
 
     if (res.statusCode == 200) {
       final data = json.decode(res.body)['data'] as List<dynamic>;
@@ -125,8 +141,8 @@ class ScryfallApi {
   static Future<String> _tryGetAlternativeImage(String cardName, String setCode) async {
     try {
       // Prova a cercare l'immagine con una query più specifica
-      final url = Uri.parse('$_baseUrl/cards/search?q=!"$cardName"+e:$setCode');
-      final res = await http.get(url);
+      final url = _uri('/cards/search', {'q': '!"$cardName" e:$setCode'});
+      final res = await http.get(url, headers: headers);
 
       if (res.statusCode == 200) {
         final data = json.decode(res.body)['data'] as List<dynamic>;
@@ -149,8 +165,8 @@ class ScryfallApi {
     final List<CardModel> cards = [];
 
     for (int i = 0; i < count; i++) {
-      final url = Uri.parse('$_baseUrl/cards/random');
-      final res = await http.get(url);
+      final url = _uri('/cards/random');
+      final res = await http.get(url, headers: headers);
 
       if (res.statusCode == 200) {
         final cardJson = json.decode(res.body);
@@ -177,10 +193,17 @@ class ScryfallApi {
   }
 
   static Future<List<CardModel>> fetchCards() async {
-    final url = Uri.parse(
-      '$_baseUrl/cards/search?format=json&include_extras=false&include_multilingual=false&include_variations=false&order=name&page=2&q=c%3Awhite+mv%3D1&unique=cards',
-    );
-    final res = await http.get(url);
+    final url = _uri('/cards/search', {
+      'format': 'json',
+      'include_extras': 'false',
+      'include_multilingual': 'false',
+      'include_variations': 'false',
+      'order': 'name',
+      'page': '2',
+      'q': 'c:white mv=1',
+      'unique': 'cards',
+    });
+    final res = await http.get(url, headers: headers);
 
     if (res.statusCode == 200) {
       final data = json.decode(res.body)['data'];

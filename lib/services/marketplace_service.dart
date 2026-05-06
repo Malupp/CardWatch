@@ -10,23 +10,38 @@ import '../models/enums/card_game_id.dart';
 class MarketplaceService {
   static const Duration _requestTimeout = Duration(seconds: 12);
 
-  static String get _baseUrl => dotenv.env['BASE_MARKETPLACE_API'] ?? '';
+  static String get _baseUrl {
+    final configured = dotenv.env['BASE_MARKETPLACE_API'] ?? '';
+    return configured.replaceFirst(RegExp(r'/+$'), '');
+  }
+
   static String get _token => dotenv.env['MARKETPLACE_TOKEN'] ?? '';
   static bool get _isConfigured => _baseUrl.isNotEmpty && _token.isNotEmpty;
 
   static Map<String, String> get _headers => {
     'Authorization': 'Bearer $_token',
+    'Accept': 'application/json',
     'Content-Type': 'application/json',
   };
+
+  static Uri _uri(String path, [Map<String, String>? queryParameters]) {
+    final uri = Uri.parse('$_baseUrl$path');
+    return queryParameters == null
+        ? uri
+        : uri.replace(queryParameters: queryParameters);
+  }
 
   // Equivalente di getBlueprintList
   static Future<List<CardBlueprint>> getBlueprintList(String query) async {
     if (!_isConfigured) return [];
 
     try {
-      final url = '$_baseUrl/blueprints?game_id=${CardGameId.MAGIC.value}&name=$query';
+      final url = _uri('/blueprints', {
+        'game_id': '${CardGameId.MAGIC.value}',
+        'name': query,
+      });
       final response = await http.get(
-        Uri.parse(url),
+        url,
         headers: _headers,
       ).timeout(_requestTimeout);
 
@@ -34,7 +49,9 @@ class MarketplaceService {
         final List<dynamic> jsonList = json.decode(response.body);
         return jsonList.map((json) => CardBlueprint.fromJson(json)).toList();
       } else {
-        throw Exception('Errore nel caricamento delle carte: ${response.statusCode}');
+        throw Exception(
+          'Errore nel caricamento delle carte: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       throw Exception('Errore di rete: $e');
@@ -46,9 +63,11 @@ class MarketplaceService {
     if (!_isConfigured) return [];
 
     try {
-      final url = '$_baseUrl/marketplace/products?blueprint_id=$blueprintId';
+      final url = _uri('/marketplace/products', {
+        'blueprint_id': '$blueprintId',
+      });
       final response = await http.get(
-        Uri.parse(url),
+        url,
         headers: _headers,
       ).timeout(_requestTimeout);
 
@@ -59,7 +78,9 @@ class MarketplaceService {
         final List<dynamic> cardList = jsonResponse[blueprintId.toString()] ?? [];
         return cardList.map((json) => CardMarketplace.fromJson(json)).toList();
       } else {
-        throw Exception('Errore nel caricamento del marketplace: ${response.statusCode}');
+        throw Exception(
+          'Errore nel caricamento del marketplace: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       throw Exception('Errore di rete: $e');

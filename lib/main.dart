@@ -22,7 +22,14 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
   await NotificationService.init();
+  runApp(const MyApp());
 
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    _startBackgroundServices();
+  });
+}
+
+Future<void> _startBackgroundServices() async {
   try {
     await PriceAlertService.checkForLowerPrices();
   } catch (e) {
@@ -46,8 +53,6 @@ void main() async {
   } catch (e) {
     debugPrint('Workmanager non inizializzato: $e');
   }
-
-  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {

@@ -27,8 +27,15 @@ class CardMarketplace {
   String get condition => propertiesHash['condition']?.toString() ?? 'N/A';
   
   // Altri getter utili che potresti aver bisogno
-  String get language => propertiesHash['language']?.toString() ?? 'N/A';
-  bool get isFoil => propertiesHash['foil'] == true || propertiesHash['foil'] == 'true';
+  String get language =>
+      propertiesHash['mtg_language']?.toString() ??
+      propertiesHash['language']?.toString() ??
+      'N/A';
+  bool get isFoil =>
+      propertiesHash['mtg_foil'] == true ||
+      propertiesHash['mtg_foil'] == 'true' ||
+      propertiesHash['foil'] == true ||
+      propertiesHash['foil'] == 'true';
   bool get isSigned => propertiesHash['signed'] == true || propertiesHash['signed'] == 'true';
 }
 
@@ -64,6 +71,17 @@ class CardPrice {
   CardPrice({required this.formatted});
 
   factory CardPrice.fromJson(Map<String, dynamic> json) {
-    return CardPrice(formatted: json['formatted'] ?? '');
+    final formatted = json['formatted'];
+    if (formatted is String && formatted.isNotEmpty) {
+      return CardPrice(formatted: formatted);
+    }
+
+    final cents = json['cents'];
+    final currency = json['currency']?.toString() ?? '';
+    if (cents is num) {
+      return CardPrice(formatted: '${(cents / 100).toStringAsFixed(2)} $currency'.trim());
+    }
+
+    return CardPrice(formatted: '');
   }
 }
