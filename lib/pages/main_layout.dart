@@ -42,16 +42,15 @@ class _MainLayoutState extends State<MainLayout> {
           SafeArea(
             child: _pages[_currentIndex],
           ),
-          if (_currentIndex == 0)
-            Positioned(
-              left: 24,
-              right: 24,
-              bottom: MediaQuery.of(context).padding.bottom + 20,
-              child: BubbleNavbar(
-                currentIndex: _currentIndex,
-                onTap: _onPageSelected,
-              ),
+          Positioned(
+            left: 24,
+            right: 24,
+            bottom: MediaQuery.of(context).padding.bottom + 20,
+            child: BubbleNavbar(
+              currentIndex: _currentIndex,
+              onTap: _onPageSelected,
             ),
+          ),
           if (_currentIndex == 0)
             Positioned(
               right: 16,

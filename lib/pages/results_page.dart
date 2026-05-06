@@ -17,6 +17,8 @@ class ResultsPage extends StatefulWidget {
 
 class _ResultsPageState extends State<ResultsPage> {
   bool _loading = true;
+  String? _emptyMessage;
+  String? _errorMessage;
   List<CardMarketplace> _allCards = [];
   List<CardMarketplace> _filteredCards = [];
   List<CarouselItem> _allCarouselImages = [];
@@ -45,63 +47,77 @@ class _ResultsPageState extends State<ResultsPage> {
   }
 
   Future<void> _loadCards() async {
-    List<CardMarketplace> cardsList = [];
-    List<CarouselItem> carouselImages = [];
-    
-    final blueprintsList = await MarketplaceService.getBlueprintList(
-      widget.query,
-    );
+    try {
+      List<CardMarketplace> cardsList = [];
+      List<CarouselItem> carouselImages = [];
 
-    for (final blueprint in blueprintsList) {
-      List<CardMarketplace> cards = await MarketplaceService.getMarketCard(
-        blueprint.id,
+      final blueprintsList = await MarketplaceService.getBlueprintList(
+        widget.query,
       );
-      cardsList.addAll(cards.map((c) {
-        final props = Map<String, dynamic>.from(c.propertiesHash);
-        props['name'] = blueprint.name;
-        return CardMarketplace(
-          user: c.user,
-          expansion: c.expansion,
-          price: c.price,
-          propertiesHash: props,
-          quantity: c.quantity,
+
+      for (final blueprint in blueprintsList) {
+        List<CardMarketplace> cards = await MarketplaceService.getMarketCard(
+          blueprint.id,
         );
-      }));
-    }
-
-    // Debug: stampa tutte le condizioni uniche che arrivano dall'API
-    final uniqueConditions = cardsList.map((c) => c.condition).toSet();
-    print('Condizioni uniche trovate: $uniqueConditions');
-
-    // Aggiorna la mappa delle condizioni con quelle trovate
-    setState(() {
-      _conditions.clear();
-      for (var condition in uniqueConditions) {
-        _conditions[condition] = condition;
+        cardsList.addAll(cards.map((c) {
+          final props = Map<String, dynamic>.from(c.propertiesHash);
+          props['name'] = blueprint.name;
+          props['imageUrl'] ??= blueprint.imageUrl;
+          props['imageNormalUrl'] ??= blueprint.imageUrl;
+          return CardMarketplace(
+            user: c.user,
+            expansion: c.expansion,
+            price: c.price,
+            propertiesHash: props,
+            quantity: c.quantity,
+          );
+        }));
       }
-    });
 
-    for (final card in cardsList) {
-      final alreadyFetched = carouselImages.any(
-        (element) => element.description == card.expansion.nameEn
-      );
-      if (!alreadyFetched) {
-        final image = await ScryfallApi.getCardsImageByExpansionCode(
-          widget.query,
-          card.expansion.code,
-        );
-        carouselImages.add(
-          CarouselItem(url: image, description: card.expansion.nameEn)
-        );
+      final uniqueConditions = cardsList.map((c) => c.condition).toSet();
+
+      if (mounted) {
+        setState(() {
+          _conditions.clear();
+          for (var condition in uniqueConditions) {
+            _conditions[condition] = condition;
+          }
+        });
       }
-    }
 
-    setState(() {
-      _loading = false;
-      _allCards = cardsList;
-      _filteredCards = cardsList;
-      _allCarouselImages = carouselImages;
-    });
+      for (final card in cardsList) {
+        final alreadyFetched = carouselImages.any(
+          (element) => element.description == card.expansion.nameEn,
+        );
+        if (!alreadyFetched) {
+          final image = await ScryfallApi.getCardsImageByExpansionCode(
+            widget.query,
+            card.expansion.code,
+          );
+          carouselImages.add(
+            CarouselItem(url: image, description: card.expansion.nameEn),
+          );
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _allCards = cardsList;
+        _filteredCards = cardsList;
+        _allCarouselImages = carouselImages;
+        _emptyMessage = blueprintsList.isEmpty
+            ? 'Carta non trovata su CardTrader'
+            : 'Nessuna offerta attiva su CardTrader';
+        _errorMessage = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _errorMessage = 'Errore nel caricamento offerte: $e';
+      });
+    }
   }
 
   List<CarouselItem> get _filteredCarouselImages {
@@ -120,26 +136,11 @@ class _ResultsPageState extends State<ResultsPage> {
 
   void _filterCards() {
     setState(() {
-      print('Filtraggio in corso...');
-      print('Set selezionato: $_selectedSet');
-      print('Condizione selezionata: $_selectedCondition');
-      
       _filteredCards = _allCards.where((card) {
         bool matchesSet = _selectedSet == null || card.expansion.nameEn == _selectedSet;
         bool matchesCondition = _selectedCondition == null || card.condition == _selectedCondition;
-        
-        final result = matchesSet && matchesCondition;
-        if (_selectedCondition != null) {
-          print('Carta: ${card.expansion.nameEn}');
-          print('Condizione carta: "${card.condition}"');
-          print('Confronto con: "$_selectedCondition"');
-          print('Risultato match: $result');
-        }
-        
-        return result;
+        return matchesSet && matchesCondition;
       }).toList();
-      
-      print('Carte filtrate: ${_filteredCards.length}');
       _currentPage = 0;
     });
   }
@@ -287,8 +288,26 @@ class _ResultsPageState extends State<ResultsPage> {
       ),
       body: _loading
         ? const Center(child: CircularProgressIndicator())
+        : _errorMessage != null
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  _errorMessage!,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            )
         : _filteredCards.isEmpty
-          ? const Center(child: Text('Nessuna carta trovata'))
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  _emptyMessage ?? 'Nessuna offerta trovata',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            )
           : Column(
               children: [
                 if (_filteredCarouselImages.isNotEmpty) ...[

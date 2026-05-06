@@ -82,6 +82,100 @@ class _DraftPageState extends State<DraftPage> {
     return _filteredCards.sublist(startIndex, endIndex);
   }
 
+  void _showCardDetails(CardModel card) {
+    final imageUrl = (card.imageNormalUrl != null && card.imageNormalUrl!.isNotEmpty)
+        ? card.imageNormalUrl!
+        : card.imageUrl;
+
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) {
+        return SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (imageUrl.isNotEmpty)
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          imageUrl,
+                          width: 96,
+                          height: 134,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              _buildImagePlaceholder(width: 96, height: 134),
+                        ),
+                      )
+                    else
+                      _buildImagePlaceholder(width: 96, height: 134),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            card.name,
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          const SizedBox(height: 6),
+                          Text(card.expansion),
+                          if (card.typeLine != null && card.typeLine!.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 6),
+                              child: Text(card.typeLine!),
+                            ),
+                          const SizedBox(height: 8),
+                          Text(
+                            card.price,
+                            style: const TextStyle(
+                              color: Colors.green,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                if (card.oracleText != null && card.oracleText!.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Text(card.oracleText!),
+                ],
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => ResultsPage(query: card.name),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.storefront),
+                        label: const Text('Cerca offerte'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -190,11 +284,7 @@ class _DraftPageState extends State<DraftPage> {
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 8),
                                 leading: _buildCardImage(card),
                                 title: Text(card.name, overflow: TextOverflow.ellipsis),
-                                onTap: () => Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => ResultsPage(query: card.name),
-                                  ),
-                                ),
+                                onTap: () => _showCardDetails(card),
                               );
                             },
                           ),
@@ -265,10 +355,10 @@ class _DraftPageState extends State<DraftPage> {
     return _buildImagePlaceholder();
   }
 
-  Widget _buildImagePlaceholder() {
+  Widget _buildImagePlaceholder({double width = 36, double height = 54}) {
     return Container(
-      width: 36,
-      height: 54,
+      width: width,
+      height: height,
       decoration: BoxDecoration(
         color: Colors.grey[200],
         borderRadius: BorderRadius.circular(4),
