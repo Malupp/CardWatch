@@ -3,6 +3,7 @@ import '../models/card_marketplace.dart';
 import '../models/carousel_item.dart';
 import '../services/marketplace_service.dart';
 import '../widgets/carousel_widget.dart';
+import '../widgets/card_detail_dialog.dart';
 import '../services/scryfall_api.dart';
 import '../services/local_storage.dart';
 
@@ -36,7 +37,7 @@ class _ResultsPageState extends State<ResultsPage> {
     'Slightly Played': 'Slightly Played',
     'Moderately Played': 'Moderately Played',
     'Heavily Played': 'Heavily Played',
-    'Poor': 'Poor'
+    'Poor': 'Poor',
   };
 
   @override
@@ -58,19 +59,22 @@ class _ResultsPageState extends State<ResultsPage> {
         List<CardMarketplace> cards = await MarketplaceService.getMarketCard(
           blueprint.id,
         );
-        cardsList.addAll(cards.map((c) {
-          final props = Map<String, dynamic>.from(c.propertiesHash);
-          props['name'] = blueprint.name;
-          props['imageUrl'] ??= blueprint.imageUrl;
-          props['imageNormalUrl'] ??= blueprint.imageUrl;
-          return CardMarketplace(
-            user: c.user,
-            expansion: c.expansion,
-            price: c.price,
-            propertiesHash: props,
-            quantity: c.quantity,
-          );
-        }));
+        cardsList.addAll(
+          cards.map((c) {
+            final props = Map<String, dynamic>.from(c.propertiesHash);
+            props['name'] = blueprint.name;
+            props['blueprintId'] = blueprint.id;
+            props['imageUrl'] ??= blueprint.imageUrl;
+            props['imageNormalUrl'] ??= blueprint.imageUrl;
+            return CardMarketplace(
+              user: c.user,
+              expansion: c.expansion,
+              price: c.price,
+              propertiesHash: props,
+              quantity: c.quantity,
+            );
+          }),
+        );
       }
 
       final uniqueConditions = cardsList.map((c) => c.condition).toSet();
@@ -126,18 +130,20 @@ class _ResultsPageState extends State<ResultsPage> {
 
     // Ottieni i set unici dalle carte filtrate
     final filteredSets = _filteredCards.map((c) => c.expansion.nameEn).toSet();
-    
+
     // Filtra le immagini del carousel in base ai set delle carte filtrate
-    return _allCarouselImages.where((item) => 
-      filteredSets.contains(item.description)
-    ).toList();
+    return _allCarouselImages
+        .where((item) => filteredSets.contains(item.description))
+        .toList();
   }
 
   void _filterCards() {
     setState(() {
       _filteredCards = _allCards.where((card) {
-        bool matchesSet = _selectedSet == null || card.expansion.nameEn == _selectedSet;
-        bool matchesCondition = _selectedCondition == null || card.condition == _selectedCondition;
+        bool matchesSet =
+            _selectedSet == null || card.expansion.nameEn == _selectedSet;
+        bool matchesCondition =
+            _selectedCondition == null || card.condition == _selectedCondition;
         return matchesSet && matchesCondition;
       }).toList();
       _currentPage = 0;
@@ -146,7 +152,10 @@ class _ResultsPageState extends State<ResultsPage> {
 
   List<CardMarketplace> get _currentPageCards {
     final startIndex = _currentPage * _cardsPerPage;
-    final endIndex = (startIndex + _cardsPerPage).clamp(0, _filteredCards.length);
+    final endIndex = (startIndex + _cardsPerPage).clamp(
+      0,
+      _filteredCards.length,
+    );
     return _filteredCards.sublist(startIndex, endIndex);
   }
 
@@ -163,26 +172,38 @@ class _ResultsPageState extends State<ResultsPage> {
                 value: _selectedSet,
                 decoration: const InputDecoration(labelText: 'Set'),
                 items: [
-                  const DropdownMenuItem(value: null, child: Text('Tutti i set')),
+                  const DropdownMenuItem(
+                    value: null,
+                    child: Text('Tutti i set'),
+                  ),
                   ..._allCards
                       .map((c) => c.expansion.nameEn)
                       .toSet()
-                      .map((set) => DropdownMenuItem(value: set, child: Text(set))),
+                      .map(
+                        (set) => DropdownMenuItem(value: set, child: Text(set)),
+                      ),
                 ],
-                onChanged: (value) => setDialogState(() => _selectedSet = value),
+                onChanged: (value) =>
+                    setDialogState(() => _selectedSet = value),
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 value: _selectedCondition,
                 decoration: const InputDecoration(labelText: 'Condizione'),
                 items: [
-                  const DropdownMenuItem(value: null, child: Text('Tutte le condizioni')),
-                  ..._conditions.entries.map((entry) => DropdownMenuItem(
-                    value: entry.key,
-                    child: Text(entry.value),
-                  )),
+                  const DropdownMenuItem(
+                    value: null,
+                    child: Text('Tutte le condizioni'),
+                  ),
+                  ..._conditions.entries.map(
+                    (entry) => DropdownMenuItem(
+                      value: entry.key,
+                      child: Text(entry.value),
+                    ),
+                  ),
                 ],
-                onChanged: (value) => setDialogState(() => _selectedCondition = value),
+                onChanged: (value) =>
+                    setDialogState(() => _selectedCondition = value),
               ),
             ],
           ),
@@ -244,32 +265,56 @@ class _ResultsPageState extends State<ResultsPage> {
   }
 
   void _toggleCollection(CardMarketplace card) {
-    final isInCollection = LocalStorage().collection.any((c) => c.expansion.nameEn == card.expansion.nameEn && c.user.username == card.user.username);
+    final isInCollection = LocalStorage().collection.any(
+      (c) =>
+          c.expansion.nameEn == card.expansion.nameEn &&
+          c.user.username == card.user.username,
+    );
     if (isInCollection) {
       LocalStorage().removeFromCollection(card);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${card.propertiesHash['name'] ?? card.expansion.nameEn} rimossa dalla collezione')),
+        SnackBar(
+          content: Text(
+            '${card.propertiesHash['name'] ?? card.expansion.nameEn} rimossa dalla collezione',
+          ),
+        ),
       );
     } else {
       LocalStorage().addToCollection(_withImageUrl(card));
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${card.propertiesHash['name'] ?? card.expansion.nameEn} aggiunta alla collezione')),
+        SnackBar(
+          content: Text(
+            '${card.propertiesHash['name'] ?? card.expansion.nameEn} aggiunta alla collezione',
+          ),
+        ),
       );
     }
     setState(() {});
   }
 
   void _toggleWatchlist(CardMarketplace card) {
-    final isInWatchlist = LocalStorage().watchlist.any((c) => c.expansion.nameEn == card.expansion.nameEn && c.user.username == card.user.username);
+    final isInWatchlist = LocalStorage().watchlist.any(
+      (c) =>
+          c.expansion.nameEn == card.expansion.nameEn &&
+          c.user.username == card.user.username,
+    );
     if (isInWatchlist) {
       LocalStorage().removeFromWatchlist(card);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${card.propertiesHash['name'] ?? card.expansion.nameEn} rimossa dalla watchlist')),
+        SnackBar(
+          content: Text(
+            '${card.propertiesHash['name'] ?? card.expansion.nameEn} rimossa dalla watchlist',
+          ),
+        ),
       );
     } else {
       LocalStorage().addToWatchlist(_withImageUrl(card));
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${card.propertiesHash['name'] ?? card.expansion.nameEn} aggiunta alla watchlist')),
+        SnackBar(
+          content: Text(
+            '${card.propertiesHash['name'] ?? card.expansion.nameEn} aggiunta alla watchlist',
+          ),
+        ),
       );
     }
     setState(() {});
@@ -295,18 +340,15 @@ class _ResultsPageState extends State<ResultsPage> {
         ],
       ),
       body: _loading
-        ? const Center(child: CircularProgressIndicator())
-        : _errorMessage != null
+          ? const Center(child: CircularProgressIndicator())
+          : _errorMessage != null
           ? Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
-                child: Text(
-                  _errorMessage!,
-                  textAlign: TextAlign.center,
-                ),
+                child: Text(_errorMessage!, textAlign: TextAlign.center),
               ),
             )
-        : _filteredCards.isEmpty
+          : _filteredCards.isEmpty
           ? Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
@@ -332,8 +374,8 @@ class _ResultsPageState extends State<ResultsPage> {
                         IconButton(
                           icon: const Icon(Icons.chevron_left),
                           onPressed: _currentPage > 0
-                            ? () => setState(() => _currentPage--)
-                            : null,
+                              ? () => setState(() => _currentPage--)
+                              : null,
                         ),
                         Text(
                           'Pagina ${_currentPage + 1} di ${(_filteredCards.length / _cardsPerPage).ceil()}',
@@ -341,9 +383,11 @@ class _ResultsPageState extends State<ResultsPage> {
                         ),
                         IconButton(
                           icon: const Icon(Icons.chevron_right),
-                          onPressed: (_currentPage + 1) * _cardsPerPage < _filteredCards.length
-                            ? () => setState(() => _currentPage++)
-                            : null,
+                          onPressed:
+                              (_currentPage + 1) * _cardsPerPage <
+                                  _filteredCards.length
+                              ? () => setState(() => _currentPage++)
+                              : null,
                         ),
                       ],
                     ),
@@ -353,13 +397,28 @@ class _ResultsPageState extends State<ResultsPage> {
                     itemCount: _currentPageCards.length,
                     itemBuilder: (context, index) {
                       final card = _currentPageCards[index];
-                      final isInCollection = LocalStorage().collection.any((c) => c.expansion.nameEn == card.expansion.nameEn && c.user.username == card.user.username);
-                      final isInWatchlist = LocalStorage().watchlist.any((c) => c.expansion.nameEn == card.expansion.nameEn && c.user.username == card.user.username);
+                      final isInCollection = LocalStorage().collection.any(
+                        (c) =>
+                            c.expansion.nameEn == card.expansion.nameEn &&
+                            c.user.username == card.user.username,
+                      );
+                      final isInWatchlist = LocalStorage().watchlist.any(
+                        (c) =>
+                            c.expansion.nameEn == card.expansion.nameEn &&
+                            c.user.username == card.user.username,
+                      );
                       return Card(
-                        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                        margin: const EdgeInsets.symmetric(
+                          vertical: 4,
+                          horizontal: 8,
+                        ),
                         child: InkWell(
                           onTap: () {
-                            // TODO: Mostra dettagli carta
+                            showDialog(
+                              context: context,
+                              builder: (context) =>
+                                  CardDetailDialog(card: _withImageUrl(card)),
+                            );
                           },
                           child: Padding(
                             padding: const EdgeInsets.all(8.0),
@@ -368,11 +427,15 @@ class _ResultsPageState extends State<ResultsPage> {
                                 _buildCardImage(card),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        card.propertiesHash['name'] ?? card.expansion.nameEn,
-                                        style: const TextStyle(fontWeight: FontWeight.bold),
+                                        card.propertiesHash['name'] ??
+                                            card.expansion.nameEn,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                       Text(
                                         card.expansion.nameEn,
@@ -381,7 +444,9 @@ class _ResultsPageState extends State<ResultsPage> {
                                       Text(
                                         '${card.user.username} • ${_getConditionLabel(card.condition)}${card.isFoil ? ' • Foil' : ''}',
                                         style: TextStyle(
-                                          color: Theme.of(context).textTheme.bodySmall?.color,
+                                          color: Theme.of(
+                                            context,
+                                          ).textTheme.bodySmall?.color,
                                           fontSize: 12,
                                         ),
                                       ),
@@ -402,15 +467,21 @@ class _ResultsPageState extends State<ResultsPage> {
                                     color: isInCollection ? Colors.green : null,
                                   ),
                                   onPressed: () => _toggleCollection(card),
-                                  tooltip: isInCollection ? 'Rimuovi dalla collezione' : 'Aggiungi alla collezione',
+                                  tooltip: isInCollection
+                                      ? 'Rimuovi dalla collezione'
+                                      : 'Aggiungi alla collezione',
                                 ),
                                 IconButton(
                                   icon: Icon(
-                                    isInWatchlist ? Icons.favorite : Icons.favorite_border,
+                                    isInWatchlist
+                                        ? Icons.favorite
+                                        : Icons.favorite_border,
                                     color: isInWatchlist ? Colors.red : null,
                                   ),
                                   onPressed: () => _toggleWatchlist(card),
-                                  tooltip: isInWatchlist ? 'Rimuovi dalla watchlist' : 'Aggiungi alla watchlist',
+                                  tooltip: isInWatchlist
+                                      ? 'Rimuovi dalla watchlist'
+                                      : 'Aggiungi alla watchlist',
                                 ),
                               ],
                             ),

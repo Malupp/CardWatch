@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/card_model.dart';
 import '../services/unified_card_service.dart';
-import 'custom_card_widget.dart';
 import '../services/local_storage.dart';
 import '../models/card_marketplace.dart';
 import '../services/marketplace_service.dart';
@@ -65,7 +64,11 @@ class RandomCardsWidgetState extends State<RandomCardsWidget>
   CardMarketplace _toMarketplace(CardModel card, int blueprintId) {
     return CardMarketplace(
       user: CardUser(username: card.username),
-      expansion: CardExpansion(nameEn: card.expansion, code: '', id: blueprintId),
+      expansion: CardExpansion(
+        nameEn: card.expansion,
+        code: '',
+        id: blueprintId,
+      ),
       price: CardPrice(formatted: card.price),
       propertiesHash: {
         'name': card.name,
@@ -75,6 +78,7 @@ class RandomCardsWidgetState extends State<RandomCardsWidget>
         'language': 'N/A',
         'imageUrl': card.imageUrl,
         'imageNormalUrl': card.imageNormalUrl,
+        'blueprintId': blueprintId,
       },
       quantity: card.quantity ?? 1,
     );
@@ -82,23 +86,23 @@ class RandomCardsWidgetState extends State<RandomCardsWidget>
 
   Future<void> _addToCollection(CardModel card) async {
     final blueprints = await MarketplaceService.getBlueprintList(card.name);
+    if (!mounted) return;
+
     final blueprintId = blueprints.isNotEmpty ? blueprints.first.id : 0;
     LocalStorage().addToCollection(_toMarketplace(card, blueprintId));
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${card.name} aggiunta alla collezione'),
-      ),
+      SnackBar(content: Text('${card.name} aggiunta alla collezione')),
     );
   }
 
   Future<void> _addToWatchlist(CardModel card) async {
     final blueprints = await MarketplaceService.getBlueprintList(card.name);
+    if (!mounted) return;
+
     final blueprintId = blueprints.isNotEmpty ? blueprints.first.id : 0;
     LocalStorage().addToWatchlist(_toMarketplace(card, blueprintId));
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${card.name} aggiunta alla watchlist'),
-      ),
+      SnackBar(content: Text('${card.name} aggiunta alla watchlist')),
     );
   }
 
@@ -132,10 +136,7 @@ class RandomCardsWidgetState extends State<RandomCardsWidget>
           children: [
             const Icon(Icons.cloud_off, size: 48, color: Colors.grey),
             const SizedBox(height: 12),
-            Text(
-              _errorMessage!,
-              textAlign: TextAlign.center,
-            ),
+            Text(_errorMessage!, textAlign: TextAlign.center),
             const SizedBox(height: 12),
             OutlinedButton.icon(
               onPressed: refreshCards,
@@ -169,7 +170,8 @@ class RandomCardsWidgetState extends State<RandomCardsWidget>
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (card.imageNormalUrl != null && card.imageNormalUrl!.isNotEmpty)
+                            if (card.imageNormalUrl != null &&
+                                card.imageNormalUrl!.isNotEmpty)
                               Padding(
                                 padding: const EdgeInsets.only(bottom: 8.0),
                                 child: Image.network(
@@ -191,7 +193,9 @@ class RandomCardsWidgetState extends State<RandomCardsWidget>
                   );
                 },
                 child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(12),
+                  ),
                   child: Image.network(
                     card.imageUrl,
                     width: double.infinity,
@@ -201,7 +205,11 @@ class RandomCardsWidgetState extends State<RandomCardsWidget>
                       height: 200,
                       color: Colors.grey[200],
                       child: const Center(
-                        child: Icon(Icons.broken_image, size: 50, color: Colors.grey),
+                        child: Icon(
+                          Icons.broken_image,
+                          size: 50,
+                          color: Colors.grey,
+                        ),
                       ),
                     ),
                   ),
@@ -247,7 +255,10 @@ class RandomCardsWidgetState extends State<RandomCardsWidget>
                           ),
                           _buildDetailRow(
                             'Prezzo Foil',
-                            card.price.split('(Foil:')[1].replaceAll(')', '').trim(),
+                            card.price
+                                .split('(Foil:')[1]
+                                .replaceAll(')', '')
+                                .trim(),
                             valueStyle: TextStyle(
                               color: Colors.grey[600],
                               fontStyle: FontStyle.italic,
@@ -316,13 +327,21 @@ class RandomCardsWidgetState extends State<RandomCardsWidget>
                   ],
                 ),
               ),
-              ButtonBar(
+              OverflowBar(
                 alignment: MainAxisAlignment.end,
                 children: [
                   Builder(
                     builder: (context) {
-                      final isInCollection = LocalStorage().collection.any((c) => c.expansion.nameEn == card.expansion && c.user.username == card.username);
-                      final isInWatchlist = LocalStorage().watchlist.any((c) => c.expansion.nameEn == card.expansion && c.user.username == card.username);
+                      final isInCollection = LocalStorage().collection.any(
+                        (c) =>
+                            c.expansion.nameEn == card.expansion &&
+                            c.user.username == card.username,
+                      );
+                      final isInWatchlist = LocalStorage().watchlist.any(
+                        (c) =>
+                            c.expansion.nameEn == card.expansion &&
+                            c.user.username == card.username,
+                      );
                       return Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -336,7 +355,9 @@ class RandomCardsWidgetState extends State<RandomCardsWidget>
                           ),
                           TextButton.icon(
                             icon: Icon(
-                              isInWatchlist ? Icons.favorite : Icons.favorite_border,
+                              isInWatchlist
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
                               color: isInWatchlist ? Colors.red : null,
                             ),
                             label: const Text('Watchlist'),
@@ -369,12 +390,7 @@ class RandomCardsWidgetState extends State<RandomCardsWidget>
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
-          Expanded(
-            child: Text(
-              value,
-              style: valueStyle,
-            ),
-          ),
+          Expanded(child: Text(value, style: valueStyle)),
         ],
       ),
     );
@@ -389,17 +405,11 @@ class RandomCardsWidgetState extends State<RandomCardsWidget>
           children: [
             TextSpan(
               text: '$label: ',
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 12,
-              ),
+              style: TextStyle(color: Colors.grey[600], fontSize: 12),
             ),
             TextSpan(
               text: value,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
             ),
           ],
         ),
