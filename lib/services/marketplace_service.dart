@@ -1,4 +1,3 @@
-
 // lib/services/marketplace_service.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -40,10 +39,9 @@ class MarketplaceService {
         'game_id': '${CardGameId.MAGIC.value}',
         'name': query,
       });
-      final response = await http.get(
-        url,
-        headers: _headers,
-      ).timeout(_requestTimeout);
+      final response = await http
+          .get(url, headers: _headers)
+          .timeout(_requestTimeout);
 
       if (response.statusCode == 200) {
         final List<dynamic> jsonList = json.decode(response.body);
@@ -59,23 +57,31 @@ class MarketplaceService {
   }
 
   // Equivalente di getMarketCard
-  static Future<List<CardMarketplace>> getMarketCard(int blueprintId) async {
+  static Future<List<CardMarketplace>> getMarketCard(
+    int blueprintId, {
+    bool? foil,
+    String? language,
+  }) async {
     if (!_isConfigured) return [];
 
     try {
-      final url = _uri('/marketplace/products', {
+      final query = {
         'blueprint_id': '$blueprintId',
-      });
-      final response = await http.get(
-        url,
-        headers: _headers,
-      ).timeout(_requestTimeout);
+        if (foil != null) 'foil': foil ? 'true' : 'false',
+        if (language != null && language.trim().isNotEmpty)
+          'language': language.trim(),
+      };
+      final url = _uri('/marketplace/products', query);
+      final response = await http
+          .get(url, headers: _headers)
+          .timeout(_requestTimeout);
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonResponse = json.decode(response.body);
-        
+
         // Equivalente del pipe map di Angular
-        final List<dynamic> cardList = jsonResponse[blueprintId.toString()] ?? [];
+        final List<dynamic> cardList =
+            jsonResponse[blueprintId.toString()] ?? [];
         return cardList.map((json) => CardMarketplace.fromJson(json)).toList();
       } else {
         throw Exception(
@@ -84,6 +90,23 @@ class MarketplaceService {
       }
     } catch (e) {
       throw Exception('Errore di rete: $e');
+    }
+  }
+
+  static Future<bool> checkToken() async {
+    if (!_isConfigured) return false;
+
+    try {
+      final url = _uri('/blueprints', {
+        'game_id': '${CardGameId.MAGIC.value}',
+        'name': 'Black Lotus',
+      });
+      final response = await http
+          .get(url, headers: _headers)
+          .timeout(_requestTimeout);
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
     }
   }
 }

@@ -10,6 +10,8 @@ class SavedCardsList extends StatefulWidget {
   final int drawerIndex;
   final List<CardMarketplace> Function() cards;
   final void Function(CardMarketplace card) onRemove;
+  final void Function(CardMarketplace card, double? thresholdEur)?
+  onSetPriceThreshold;
   final void Function(int index) onNavigate;
 
   const SavedCardsList({
@@ -19,6 +21,7 @@ class SavedCardsList extends StatefulWidget {
     required this.drawerIndex,
     required this.cards,
     required this.onRemove,
+    this.onSetPriceThreshold,
     required this.onNavigate,
   });
 
@@ -208,6 +211,55 @@ class _SavedCardsListState extends State<SavedCardsList> {
     );
   }
 
+  Future<void> _showThresholdDialog(CardMarketplace card) async {
+    final threshold = _priceThresholdEur(card);
+    final controller = TextEditingController(
+      text: threshold == null ? '' : threshold.toStringAsFixed(2),
+    );
+
+    final result = await showDialog<_ThresholdDialogResult>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Soglia prezzo'),
+        content: TextField(
+          controller: controller,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(
+            labelText: 'Avvisami sotto',
+            suffixText: 'EUR',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context, const _ThresholdDialogResult(null));
+            },
+            child: const Text('RIMUOVI'),
+          ),
+          TextButton(
+            onPressed: () {
+              final threshold = _parseOptionalPrice(controller.text);
+              if (threshold == null) return;
+              Navigator.pop(context, _ThresholdDialogResult(threshold));
+            },
+            child: const Text('SALVA'),
+          ),
+        ],
+      ),
+    );
+
+    controller.dispose();
+    if (!mounted || result == null) return;
+
+    widget.onSetPriceThreshold?.call(card, result.thresholdEur);
+
+     if (mounted) {
+        setState(() {
+        widget.onSetPriceThreshold?.call(card, result.thresholdEur);
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final sourceCards = widget.cards();
@@ -338,6 +390,10 @@ class _SavedCardsListState extends State<SavedCardsList> {
                               }
                             });
                           },
+                          onSetPriceThreshold:
+                              widget.onSetPriceThreshold == null
+                              ? null
+                              : () => _showThresholdDialog(card),
                         );
                       },
                     ),
@@ -347,6 +403,26 @@ class _SavedCardsListState extends State<SavedCardsList> {
             ),
     );
   }
+
+  double? _parseOptionalPrice(String formatted) {
+    final cleaned = formatted
+        .replaceAll(',', '.')
+        .replaceAll(RegExp(r'[^0-9.]'), '')
+        .trim();
+    return double.tryParse(cleaned);
+  }
+
+  double? _priceThresholdEur(CardMarketplace card) {
+    final value = card.propertiesHash['priceThresholdEur'];
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '');
+  }
+}
+
+class _ThresholdDialogResult {
+  final double? thresholdEur;
+
+  const _ThresholdDialogResult(this.thresholdEur);
 }
 
 class _PaginationBar extends StatelessWidget {
@@ -390,6 +466,7 @@ class _SavedCardTile extends StatelessWidget {
   final String title;
   final VoidCallback onTap;
   final VoidCallback onRemove;
+  final VoidCallback? onSetPriceThreshold;
 
   const _SavedCardTile({
     required this.card,
@@ -397,48 +474,78 @@ class _SavedCardTile extends StatelessWidget {
     required this.title,
     required this.onTap,
     required this.onRemove,
+    this.onSetPriceThreshold,
   });
 
   @override
   Widget build(BuildContext context) {
+    final threshold = _priceThresholdEur(card);
+
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4),
-      child: ListTile(
-        onTap: onTap,
-        leading: ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: imageUrl != null
-              ? Image.network(
-                  imageUrl!,
-                  width: 56,
-                  height: 78,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => _placeholder(),
-                )
-              : _placeholder(),
-        ),
-        title: Text(
-          title,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontWeight: FontWeight.w700),
-        ),
-        subtitle: Text(
-          [
-            card.expansion.nameEn,
-            card.user.username,
-            card.condition,
-            if (card.isFoil) 'Foil',
-            card.price.formatted,
-          ].where((value) => value.isNotEmpty && value != 'N/A').join(' - '),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        trailing: IconButton(
-          icon: const Icon(Icons.delete_outline),
-          tooltip: 'Rimuovi',
-          onPressed: onRemove,
-        ),
+      child: Column(
+        children: [
+          ListTile(
+            onTap: onTap,
+            leading: ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: imageUrl != null
+                  ? Image.network(
+                      imageUrl!,
+                      width: 56,
+                      height: 78,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          _placeholder(),
+                    )
+                  : _placeholder(),
+            ),
+            title: Text(
+              title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            subtitle: Text(
+              [
+                    card.expansion.nameEn,
+                    card.user.username,
+                    card.condition,
+                    if (card.isFoil) 'Foil',
+                    card.price.formatted,
+                  ]
+                  .where((value) => value.isNotEmpty && value != 'N/A')
+                  .join(' - '),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            trailing: IconButton(
+              icon: const Icon(Icons.delete_outline),
+              tooltip: 'Rimuovi',
+              onPressed: onRemove,
+            ),
+          ),
+          if (onSetPriceThreshold != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(72, 0, 8, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: onSetPriceThreshold,
+                  icon: Icon(
+                    threshold == null
+                        ? Icons.notifications_none
+                        : Icons.notifications_active,
+                  ),
+                  label: Text(
+                    threshold == null
+                        ? 'Imposta avviso prezzo'
+                        : 'Avvisami sotto ${threshold.toStringAsFixed(2)} EUR',
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -450,5 +557,11 @@ class _SavedCardTile extends StatelessWidget {
       color: Colors.grey[200],
       child: const Icon(Icons.broken_image, color: Colors.grey),
     );
+  }
+
+  double? _priceThresholdEur(CardMarketplace card) {
+    final value = card.propertiesHash['priceThresholdEur'];
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '');
   }
 }

@@ -38,6 +38,17 @@ class ScryfallApi {
     }
   }
 
+  static Future<bool> checkReachable() async {
+    try {
+      final res = await http
+          .get(_uri('/cards/named', {'exact': 'Black Lotus'}), headers: headers)
+          .timeout(const Duration(seconds: 8));
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
   static Future<String> getCardsImageByExpansionCode(
     String cardName,
     String expansionCode,

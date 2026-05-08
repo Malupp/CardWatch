@@ -25,7 +25,7 @@ class CardMarketplace {
 
   // Getter per ottenere la condizione dalla properties_hash
   String get condition => propertiesHash['condition']?.toString() ?? 'N/A';
-  
+
   // Altri getter utili che potresti aver bisogno
   String get language =>
       propertiesHash['mtg_language']?.toString() ??
@@ -36,7 +36,30 @@ class CardMarketplace {
       propertiesHash['mtg_foil'] == 'true' ||
       propertiesHash['foil'] == true ||
       propertiesHash['foil'] == 'true';
-  bool get isSigned => propertiesHash['signed'] == true || propertiesHash['signed'] == 'true';
+  bool get isSigned =>
+      propertiesHash['signed'] == true || propertiesHash['signed'] == 'true';
+
+  double? get priceThresholdEur {
+    final value = propertiesHash['priceThresholdEur'];
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '');
+  }
+
+  CardMarketplace copyWith({
+    CardUser? user,
+    CardExpansion? expansion,
+    CardPrice? price,
+    Map<String, dynamic>? propertiesHash,
+    int? quantity,
+  }) {
+    return CardMarketplace(
+      user: user ?? this.user,
+      expansion: expansion ?? this.expansion,
+      price: price ?? this.price,
+      propertiesHash: propertiesHash ?? this.propertiesHash,
+      quantity: quantity ?? this.quantity,
+    );
+  }
 }
 
 class CardUser {
@@ -60,7 +83,9 @@ class CardExpansion {
     return CardExpansion(
       nameEn: json['name_en'] ?? '',
       code: json['code'] ?? '',
-      id: json['id'] is int ? json['id'] as int : int.tryParse('${json['id']}') ?? 0,
+      id: json['id'] is int
+          ? json['id'] as int
+          : int.tryParse('${json['id']}') ?? 0,
     );
   }
 }
@@ -79,7 +104,9 @@ class CardPrice {
     final cents = json['cents'];
     final currency = json['currency']?.toString() ?? '';
     if (cents is num) {
-      return CardPrice(formatted: '${(cents / 100).toStringAsFixed(2)} $currency'.trim());
+      return CardPrice(
+        formatted: '${(cents / 100).toStringAsFixed(2)} $currency'.trim(),
+      );
     }
 
     return CardPrice(formatted: '');

@@ -6,6 +6,7 @@ import '../widgets/carousel_widget.dart';
 import '../widgets/card_detail_dialog.dart';
 import '../services/scryfall_api.dart';
 import '../services/local_storage.dart';
+import 'package:provider/provider.dart';
 
 class ResultsPage extends StatefulWidget {
   final String query;
@@ -26,6 +27,9 @@ class _ResultsPageState extends State<ResultsPage> {
   final int _cardsPerPage = 10;
   String? _selectedSet;
   String? _selectedCondition;
+  String? _selectedLanguage;
+  String _foilFilter = 'all';
+  double? _maxPrice;
 
   // Mappa delle condizioni con le loro descrizioni
   final Map<String, String> _conditions = {
@@ -123,8 +127,32 @@ class _ResultsPageState extends State<ResultsPage> {
     }
   }
 
+  List<String> _uniqueSets() {
+    final sets = _allCards
+        .map((card) => card.expansion.nameEn)
+        .where((set) => set.isNotEmpty)
+        .toSet()
+        .toList();
+    sets.sort();
+    return sets;
+  }
+
+  List<String> _uniqueLanguages() {
+    final languages = _allCards
+        .map((card) => card.language)
+        .where((language) => language.isNotEmpty && language != 'N/A')
+        .toSet()
+        .toList();
+    languages.sort();
+    return languages;
+  }
+
   List<CarouselItem> get _filteredCarouselImages {
-    if (_selectedSet == null && _selectedCondition == null) {
+    if (_selectedSet == null &&
+        _selectedCondition == null &&
+        _selectedLanguage == null &&
+        _foilFilter == 'all' &&
+        _maxPrice == null) {
       return _allCarouselImages;
     }
 
@@ -144,7 +172,20 @@ class _ResultsPageState extends State<ResultsPage> {
             _selectedSet == null || card.expansion.nameEn == _selectedSet;
         bool matchesCondition =
             _selectedCondition == null || card.condition == _selectedCondition;
-        return matchesSet && matchesCondition;
+        bool matchesLanguage =
+            _selectedLanguage == null || card.language == _selectedLanguage;
+        bool matchesFoil =
+            _foilFilter == 'all' ||
+            (_foilFilter == 'foil' && card.isFoil) ||
+            (_foilFilter == 'nonFoil' && !card.isFoil);
+        bool matchesPrice =
+            _maxPrice == null ||
+            _parsePrice(card.price.formatted) <= _maxPrice!;
+        return matchesSet &&
+            matchesCondition &&
+            matchesLanguage &&
+            matchesFoil &&
+            matchesPrice;
       }).toList();
       _currentPage = 0;
     });
@@ -160,59 +201,115 @@ class _ResultsPageState extends State<ResultsPage> {
   }
 
   void _showFilterDialog() {
+    var selectedSet = _selectedSet;
+    var selectedCondition = _selectedCondition;
+    var selectedLanguage = _selectedLanguage;
+    var foilFilter = _foilFilter;
+    final maxPriceController = TextEditingController(
+      text: _maxPrice == null ? '' : _maxPrice!.toStringAsFixed(2),
+    );
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           title: const Text('Filtra risultati'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<String>(
-                value: _selectedSet,
-                decoration: const InputDecoration(labelText: 'Set'),
-                items: [
-                  const DropdownMenuItem(
-                    value: null,
-                    child: Text('Tutti i set'),
-                  ),
-                  ..._allCards
-                      .map((c) => c.expansion.nameEn)
-                      .toSet()
-                      .map(
-                        (set) => DropdownMenuItem(value: set, child: Text(set)),
-                      ),
-                ],
-                onChanged: (value) =>
-                    setDialogState(() => _selectedSet = value),
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: _selectedCondition,
-                decoration: const InputDecoration(labelText: 'Condizione'),
-                items: [
-                  const DropdownMenuItem(
-                    value: null,
-                    child: Text('Tutte le condizioni'),
-                  ),
-                  ..._conditions.entries.map(
-                    (entry) => DropdownMenuItem(
-                      value: entry.key,
-                      child: Text(entry.value),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  value: selectedSet,
+                  decoration: const InputDecoration(labelText: 'Set'),
+                  items: [
+                    const DropdownMenuItem(
+                      value: null,
+                      child: Text('Tutti i set'),
                     ),
+                    ..._uniqueSets().map(
+                      (set) => DropdownMenuItem(value: set, child: Text(set)),
+                    ),
+                  ],
+                  onChanged: (value) =>
+                      setDialogState(() => selectedSet = value),
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: selectedCondition,
+                  decoration: const InputDecoration(labelText: 'Condizione'),
+                  items: [
+                    const DropdownMenuItem(
+                      value: null,
+                      child: Text('Tutte le condizioni'),
+                    ),
+                    ..._conditions.entries.map(
+                      (entry) => DropdownMenuItem(
+                        value: entry.key,
+                        child: Text(entry.value),
+                      ),
+                    ),
+                  ],
+                  onChanged: (value) =>
+                      setDialogState(() => selectedCondition = value),
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: selectedLanguage,
+                  decoration: const InputDecoration(labelText: 'Lingua'),
+                  items: [
+                    const DropdownMenuItem(
+                      value: null,
+                      child: Text('Tutte le lingue'),
+                    ),
+                    ..._uniqueLanguages().map(
+                      (language) => DropdownMenuItem(
+                        value: language,
+                        child: Text(language),
+                      ),
+                    ),
+                  ],
+                  onChanged: (value) =>
+                      setDialogState(() => selectedLanguage = value),
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: foilFilter,
+                  decoration: const InputDecoration(labelText: 'Foil'),
+                  items: const [
+                    DropdownMenuItem(value: 'all', child: Text('Tutte')),
+                    DropdownMenuItem(value: 'foil', child: Text('Solo foil')),
+                    DropdownMenuItem(value: 'nonFoil', child: Text('Non foil')),
+                  ],
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setDialogState(() => foilFilter = value);
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: maxPriceController,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
                   ),
-                ],
-                onChanged: (value) =>
-                    setDialogState(() => _selectedCondition = value),
-              ),
-            ],
+                  decoration: const InputDecoration(
+                    labelText: 'Prezzo massimo',
+                    suffixText: 'EUR',
+                  ),
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
-                _selectedSet = null;
-                _selectedCondition = null;
+                setState(() {
+                  _selectedSet = null;
+                  _selectedCondition = null;
+                  _selectedLanguage = null;
+                  _foilFilter = 'all';
+                  _maxPrice = null;
+                });
                 _filterCards();
               },
               child: const Text('RESET'),
@@ -220,6 +317,11 @@ class _ResultsPageState extends State<ResultsPage> {
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
+                _selectedSet = selectedSet;
+                _selectedCondition = selectedCondition;
+                _selectedLanguage = selectedLanguage;
+                _foilFilter = foilFilter;
+                _maxPrice = _parseOptionalPrice(maxPriceController.text);
                 _filterCards();
               },
               child: const Text('APPLICA'),
@@ -227,7 +329,7 @@ class _ResultsPageState extends State<ResultsPage> {
           ],
         ),
       ),
-    );
+    ).then((_) => maxPriceController.dispose());
   }
 
   String? _getImageUrlForCard(CardMarketplace card) {
@@ -264,42 +366,35 @@ class _ResultsPageState extends State<ResultsPage> {
     );
   }
 
-  void _toggleCollection(CardMarketplace card) {
-    final isInCollection = LocalStorage().collection.any(
-      (c) =>
-          c.expansion.nameEn == card.expansion.nameEn &&
-          c.user.username == card.user.username,
+void _toggleCollection(CardMarketplace card) {
+  final storage = context.read<LocalStorage>(); // ← context.read per azioni
+  final isInCollection = storage.collection.any(
+    (c) =>
+        c.expansion.nameEn == card.expansion.nameEn &&
+        c.user.username == card.user.username,
+  );
+  if (isInCollection) {
+    storage.removeFromCollection(card);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${card.propertiesHash['name'] ?? card.expansion.nameEn} rimossa dalla collezione')),
     );
-    if (isInCollection) {
-      LocalStorage().removeFromCollection(card);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '${card.propertiesHash['name'] ?? card.expansion.nameEn} rimossa dalla collezione',
-          ),
-        ),
-      );
-    } else {
-      LocalStorage().addToCollection(_withImageUrl(card));
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '${card.propertiesHash['name'] ?? card.expansion.nameEn} aggiunta alla collezione',
-          ),
-        ),
-      );
-    }
-    setState(() {});
+  } else {
+    storage.addToCollection(_withImageUrl(card));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${card.propertiesHash['name'] ?? card.expansion.nameEn} aggiunta alla collezione')),
+    );
   }
+}
 
   void _toggleWatchlist(CardMarketplace card) {
-    final isInWatchlist = LocalStorage().watchlist.any(
+    final storage = context.read<LocalStorage>(); // ← context.read per azioni
+    final isInWatchlist = storage.watchlist.any(
       (c) =>
           c.expansion.nameEn == card.expansion.nameEn &&
           c.user.username == card.user.username,
     );
     if (isInWatchlist) {
-      LocalStorage().removeFromWatchlist(card);
+      storage.removeFromWatchlist(card);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -308,7 +403,7 @@ class _ResultsPageState extends State<ResultsPage> {
         ),
       );
     } else {
-      LocalStorage().addToWatchlist(_withImageUrl(card));
+      storage.addToWatchlist(_withImageUrl(card));
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -317,12 +412,23 @@ class _ResultsPageState extends State<ResultsPage> {
         ),
       );
     }
-    setState(() {});
   }
 
   String _getConditionLabel(String condition) {
     // Non serve più convertire, usiamo direttamente la condizione
     return condition;
+  }
+
+  double _parsePrice(String formatted) {
+    return _parseOptionalPrice(formatted) ?? double.infinity;
+  }
+
+  double? _parseOptionalPrice(String formatted) {
+    final cleaned = formatted
+        .replaceAll(',', '.')
+        .replaceAll(RegExp(r'[^0-9.]'), '')
+        .trim();
+    return double.tryParse(cleaned);
   }
 
   @override
@@ -397,12 +503,13 @@ class _ResultsPageState extends State<ResultsPage> {
                     itemCount: _currentPageCards.length,
                     itemBuilder: (context, index) {
                       final card = _currentPageCards[index];
-                      final isInCollection = LocalStorage().collection.any(
+                      final storage = context.read<LocalStorage>();
+                      final isInCollection = storage.collection.any(
                         (c) =>
                             c.expansion.nameEn == card.expansion.nameEn &&
                             c.user.username == card.user.username,
                       );
-                      final isInWatchlist = LocalStorage().watchlist.any(
+                      final isInWatchlist = storage.watchlist.any(
                         (c) =>
                             c.expansion.nameEn == card.expansion.nameEn &&
                             c.user.username == card.user.username,
@@ -442,7 +549,7 @@ class _ResultsPageState extends State<ResultsPage> {
                                         style: const TextStyle(fontSize: 12),
                                       ),
                                       Text(
-                                        '${card.user.username} • ${_getConditionLabel(card.condition)}${card.isFoil ? ' • Foil' : ''}',
+                                        '${card.user.username} - ${_getConditionLabel(card.condition)} - ${card.language}${card.isFoil ? ' - Foil' : ''}',
                                         style: TextStyle(
                                           color: Theme.of(
                                             context,
