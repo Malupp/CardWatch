@@ -19,6 +19,7 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   bool _checkingPrices = false;
+  bool _refreshingPrices = false;
   bool _checkingApiStatus = true;
   bool _savingAutoCheckSettings = false;
   bool? _cardTraderTokenValid;
@@ -217,6 +218,12 @@ class _ProfilePageState extends State<ProfilePage> {
           'Cerca offerte piu basse per collection e watchlist',
           _checkingPrices ? null : _checkPricesNow,
         ),
+        _buildActionTile(
+          Icons.update,
+          _refreshingPrices ? 'Aggiornamento in corso...' : 'Aggiorna tutti i prezzi',
+          'Aggiorna i prezzi senza mandare notifiche',
+          _refreshingPrices ? null : _refreshAllPricesNow,
+        ),
         _buildAutoCheckTile(),
       ],
     );
@@ -402,6 +409,33 @@ class _ProfilePageState extends State<ProfilePage> {
         onTap: onTap,
       ),
     );
+  }
+
+  Future<void> _refreshAllPricesNow() async {
+    setState(() => _refreshingPrices = true);
+    try {
+      final updatedCount = await PriceAlertService.refreshAllPrices();
+      _lastPriceCheckAt = await PriceAlertService.getLastCheckAt();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            updatedCount > 0
+                ? 'Prezzi aggiornati: $updatedCount carte'
+                : 'Nessuna carta aggiornata',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Aggiornamento prezzi non riuscito: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _refreshingPrices = false);
+      }
+    }
   }
 
   Future<void> _checkPricesNow() async {

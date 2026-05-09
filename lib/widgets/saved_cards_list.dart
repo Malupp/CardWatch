@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/card_marketplace.dart';
+import '../services/price_alert_service.dart';
 import '../widgets/app_drawer.dart';
 import 'card_detail_dialog.dart';
 
@@ -38,6 +39,7 @@ class _SavedCardsListState extends State<SavedCardsList> {
   String? _selectedCondition;
   String _foilFilter = 'all';
   int _currentPage = 0;
+  String? _refreshingCardKey; // Traccia quale carta sta being refreshed
 
   @override
   void dispose() {
@@ -113,6 +115,33 @@ class _SavedCardsListState extends State<SavedCardsList> {
       _foilFilter = 'all';
       _currentPage = 0;
     });
+  }
+
+  Future<void> _refreshCardPrice(CardMarketplace card) async {
+    final cardKey = '${card.expansion.nameEn}_${card.user.username}';
+    setState(() => _refreshingCardKey = cardKey);
+    try {
+      final updated = await PriceAlertService.refreshSingleCardPrice(card);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            updated != null
+                ? 'Prezzo aggiornato: ${updated.price.formatted}'
+                : 'Nessun aggiornamento disponibile',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Errore aggiornamento: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _refreshingCardKey = null);
+      }
+    }
   }
 
   void _showFilters(List<CardMarketplace> sourceCards) {
@@ -371,10 +400,12 @@ class _SavedCardsListState extends State<SavedCardsList> {
                       itemCount: pageCards.length,
                       itemBuilder: (context, index) {
                         final card = pageCards[index];
+                        final cardKey = '${card.expansion.nameEn}_${card.user.username}';
                         return _SavedCardTile(
                           card: card,
                           imageUrl: _imageUrl(card),
                           title: _cardName(card),
+                          isRefreshing: _refreshingCardKey == cardKey,
                           onTap: () {
                             showDialog(
                               context: context,
@@ -394,6 +425,7 @@ class _SavedCardsListState extends State<SavedCardsList> {
                               widget.onSetPriceThreshold == null
                               ? null
                               : () => _showThresholdDialog(card),
+                          onRefreshPrice: () => _refreshCardPrice(card),
                         );
                       },
                     ),
@@ -467,6 +499,8 @@ class _SavedCardTile extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onRemove;
   final VoidCallback? onSetPriceThreshold;
+  final VoidCallback? onRefreshPrice;
+  final bool isRefreshing;
 
   const _SavedCardTile({
     required this.card,
@@ -475,6 +509,8 @@ class _SavedCardTile extends StatelessWidget {
     required this.onTap,
     required this.onRemove,
     this.onSetPriceThreshold,
+    this.onRefreshPrice,
+    this.isRefreshing = false,
   });
 
   @override
@@ -525,23 +561,44 @@ class _SavedCardTile extends StatelessWidget {
               onPressed: onRemove,
             ),
           ),
-          if (onSetPriceThreshold != null)
+          if (onSetPriceThreshold != null || onRefreshPrice != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(72, 0, 8, 8),
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: onSetPriceThreshold,
-                  icon: Icon(
-                    threshold == null
-                        ? Icons.notifications_none
-                        : Icons.notifications_active,
-                  ),
-                  label: Text(
-                    threshold == null
-                        ? 'Imposta avviso prezzo'
-                        : 'Avvisami sotto ${threshold.toStringAsFixed(2)} EUR',
-                  ),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    if (onSetPriceThreshold != null)
+                      TextButton.icon(
+                        onPressed: onSetPriceThreshold,
+                        icon: Icon(
+                          threshold == null
+                              ? Icons.notifications_none
+                              : Icons.notifications_active,
+                        ),
+                        label: Text(
+                          threshold == null
+                              ? 'Imposta avviso prezzo'
+                              : 'Avvisami sotto ${threshold.toStringAsFixed(2)} EUR',
+                        ),
+                      ),
+                    if (onRefreshPrice != null)
+                      TextButton.icon(
+                        onPressed: isRefreshing ? null : onRefreshPrice,
+                        icon: isRefreshing
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.refresh),
+                        label: const Text('Aggiorna prezzo'),
+                      ),
+                  ],
                 ),
               ),
             ),

@@ -32,11 +32,71 @@ class PriceAlertService {
     await prefs.setString(_lastCheckKey, DateTime.now().toIso8601String());
   }
 
+  static Future<int> refreshAllPrices() async {
+    int updatedCount = 0;
+    final storage = LocalStorage();
+
+    for (final savedCard in [...storage.collection]) {
+      final offers = await _getOffers(savedCard);
+      if (offers.isNotEmpty) {
+        final bestOffer = offers.reduce((a, b) =>
+            _parsePrice(a.price.formatted) < _parsePrice(b.price.formatted)
+                ? a
+                : b);
+        if (_matchesSavedCard(savedCard, bestOffer)) {
+          storage.updateCardPrice(savedCard, bestOffer);
+          updatedCount++;
+        }
+      }
+    }
+
+    for (final savedCard in [...storage.watchlist]) {
+      final offers = await _getOffers(savedCard);
+      if (offers.isNotEmpty) {
+        final bestOffer = offers.reduce((a, b) =>
+            _parsePrice(a.price.formatted) < _parsePrice(b.price.formatted)
+                ? a
+                : b);
+        if (_matchesSavedCard(savedCard, bestOffer)) {
+          storage.updateCardPrice(savedCard, bestOffer);
+          updatedCount++;
+        }
+      }
+    }
+
+    await _updateLastCheck();
+    return updatedCount;
+  }
+
+  static Future<CardMarketplace?> refreshSingleCardPrice(
+    CardMarketplace card,
+  ) async {
+    final offers = await _getOffers(card);
+    if (offers.isEmpty) return null;
+
+    final bestOffer = offers.reduce((a, b) =>
+        _parsePrice(a.price.formatted) < _parsePrice(b.price.formatted)
+            ? a
+            : b);
+
+    if (_matchesSavedCard(card, bestOffer)) {
+      LocalStorage().updateCardPrice(card, bestOffer);
+      return bestOffer;
+    }
+
+    return null;
+  }
+
   static Future<DateTime?> getLastCheckAt() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_lastCheckKey);
     if (raw == null) return null;
     return DateTime.tryParse(raw);
+  }
+
+  static Future<void> _updateLastCheck() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_lastCheckKey, DateTime.now().toIso8601String());
   }
 
   static Future<bool> getAutoCheckEnabled() async {
