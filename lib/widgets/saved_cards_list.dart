@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../models/card_group.dart';
 import '../models/card_marketplace.dart';
+import '../services/local_storage.dart';
 import '../services/price_alert_service.dart';
 import '../widgets/app_drawer.dart';
 import 'card_detail_dialog.dart';
@@ -13,6 +15,13 @@ class SavedCardsList extends StatefulWidget {
   final void Function(CardMarketplace card) onRemove;
   final void Function(CardMarketplace card, double? thresholdEur)?
   onSetPriceThreshold;
+  final List<CardGroup> Function()? groups;
+  final void Function(String title)? onAddGroup;
+  final void Function(String groupId, String title)? onRenameGroup;
+  final void Function(String groupId)? onDeleteGroup;
+  final void Function(String groupId, CardMarketplace card)? onAddCardToGroup;
+  final void Function(String groupId, CardMarketplace card)?
+  onRemoveCardFromGroup;
   final void Function(int index) onNavigate;
 
   const SavedCardsList({
@@ -23,6 +32,12 @@ class SavedCardsList extends StatefulWidget {
     required this.cards,
     required this.onRemove,
     this.onSetPriceThreshold,
+    this.groups,
+    this.onAddGroup,
+    this.onRenameGroup,
+    this.onDeleteGroup,
+    this.onAddCardToGroup,
+    this.onRemoveCardFromGroup,
     required this.onNavigate,
   });
 
@@ -38,8 +53,17 @@ class _SavedCardsListState extends State<SavedCardsList> {
   String? _selectedSet;
   String? _selectedCondition;
   String _foilFilter = 'all';
+  String? _selectedGroupId;
   int _currentPage = 0;
   String? _refreshingCardKey; // Traccia quale carta sta being refreshed
+
+  bool get _groupsEnabled =>
+      widget.groups != null &&
+      widget.onAddGroup != null &&
+      widget.onRenameGroup != null &&
+      widget.onDeleteGroup != null &&
+      widget.onAddCardToGroup != null &&
+      widget.onRemoveCardFromGroup != null;
 
   @override
   void dispose() {
@@ -67,8 +91,14 @@ class _SavedCardsListState extends State<SavedCardsList> {
 
   List<CardMarketplace> _filteredCards(List<CardMarketplace> cards) {
     final query = _searchQuery.trim().toLowerCase();
+    final selectedGroup = _selectedGroup(_groups);
+    final groupKeys = selectedGroup?.cardKeys.toSet();
 
     return cards.where((card) {
+      if (groupKeys != null && !groupKeys.contains(_cardKey(card))) {
+        return false;
+      }
+
       final matchesSearch =
           query.isEmpty ||
           _cardName(card).toLowerCase().contains(query) ||
@@ -84,6 +114,21 @@ class _SavedCardsListState extends State<SavedCardsList> {
 
       return matchesSearch && matchesSet && matchesCondition && matchesFoil;
     }).toList();
+  }
+
+  List<CardGroup> get _groups => widget.groups?.call() ?? const [];
+
+  String _cardKey(CardMarketplace card) =>
+      '${card.expansion.nameEn}__${card.user.username}';
+
+  CardGroup? _selectedGroup(List<CardGroup> groups) {
+    final groupId = _selectedGroupId;
+    if (groupId == null) return null;
+
+    for (final group in groups) {
+      if (group.id == groupId) return group;
+    }
+    return null;
   }
 
   List<String> _uniqueSets(List<CardMarketplace> cards) {
@@ -113,8 +158,229 @@ class _SavedCardsListState extends State<SavedCardsList> {
       _selectedSet = null;
       _selectedCondition = null;
       _foilFilter = 'all';
+      _selectedGroupId = null;
       _currentPage = 0;
     });
+  }
+
+  Future<String?> _showGroupTitleDialog({
+    required String title,
+    required String actionLabel,
+    String initialValue = '',
+  }) async {
+    final controller = TextEditingController(text: initialValue);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: const InputDecoration(labelText: 'Nome gruppo'),
+          onSubmitted: (value) {
+            final trimmed = value.trim();
+            if (trimmed.isEmpty) return;
+            Navigator.pop(context, trimmed);
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('ANNULLA'),
+          ),
+          TextButton(
+            onPressed: () {
+              final trimmed = controller.text.trim();
+              if (trimmed.isEmpty) return;
+              Navigator.pop(context, trimmed);
+            },
+            child: Text(actionLabel),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    return result;
+  }
+
+  Future<void> _createGroup() async {
+    final title = await _showGroupTitleDialog(
+      title: 'Nuovo gruppo',
+      actionLabel: 'CREA',
+    );
+    if (!mounted || title == null) return;
+
+    widget.onAddGroup?.call(title);
+  }
+
+  Future<void> _renameGroup(CardGroup group) async {
+    final title = await _showGroupTitleDialog(
+      title: 'Rinomina gruppo',
+      actionLabel: 'SALVA',
+      initialValue: group.title,
+    );
+    if (!mounted || title == null) return;
+
+    widget.onRenameGroup?.call(group.id, title);
+  }
+
+  Future<void> _deleteGroup(CardGroup group) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Elimina gruppo'),
+        content: Text(
+          'Eliminare "${group.title}"? Le carte resteranno salvate.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('ANNULLA'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('ELIMINA'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || confirmed != true) return;
+
+    widget.onDeleteGroup?.call(group.id);
+    if (_selectedGroupId == group.id) {
+      setState(() => _selectedGroupId = null);
+    }
+  }
+
+  void _showGroupManager() {
+    final groups = _groups;
+
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Gruppi',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Nuovo gruppo',
+                  icon: const Icon(Icons.create_new_folder),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _createGroup();
+                  },
+                ),
+              ],
+            ),
+            if (groups.isEmpty)
+              const ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text('Nessun gruppo'),
+              )
+            else
+              ...groups.map(
+                (group) => ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(group.title),
+                  subtitle: Text('${group.cardKeys.length} carte'),
+                  trailing: Wrap(
+                    spacing: 4,
+                    children: [
+                      IconButton(
+                        tooltip: 'Rinomina',
+                        icon: const Icon(Icons.edit),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _renameGroup(group);
+                        },
+                      ),
+                      IconButton(
+                        tooltip: 'Elimina',
+                        icon: const Icon(Icons.delete_outline),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _deleteGroup(group);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showCardGroups(CardMarketplace card) {
+    final groups = _groups;
+    final cardKey = _cardKey(card);
+    final assignedGroupIds = groups
+        .where((group) => group.cardKeys.contains(cardKey))
+        .map((group) => group.id)
+        .toSet();
+
+    if (groups.isEmpty) {
+      _createGroup();
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: StatefulBuilder(
+          builder: (context, setSheetState) => ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            children: [
+              Text(
+                'Gruppi per ${_cardName(card)}',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 8),
+              ...groups.map((group) {
+                final assigned = assignedGroupIds.contains(group.id);
+                return CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(group.title),
+                  value: assigned,
+                  onChanged: (value) {
+                    if (value == true) {
+                      assignedGroupIds.add(group.id);
+                      widget.onAddCardToGroup?.call(group.id, card);
+                    } else {
+                      assignedGroupIds.remove(group.id);
+                      widget.onRemoveCardFromGroup?.call(group.id, card);
+                    }
+                    setSheetState(() {});
+                  },
+                );
+              }),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _createGroup();
+                },
+                icon: const Icon(Icons.create_new_folder),
+                label: const Text('Nuovo gruppo'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _refreshCardPrice(CardMarketplace card) async {
@@ -134,9 +400,9 @@ class _SavedCardsListState extends State<SavedCardsList> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Errore aggiornamento: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Errore aggiornamento: $e')));
     } finally {
       if (mounted) {
         setState(() => _refreshingCardKey = null);
@@ -281,12 +547,6 @@ class _SavedCardsListState extends State<SavedCardsList> {
     if (!mounted || result == null) return;
 
     widget.onSetPriceThreshold?.call(card, result.thresholdEur);
-
-     if (mounted) {
-        setState(() {
-        widget.onSetPriceThreshold?.call(card, result.thresholdEur);
-      });
-    }
   }
 
   @override
@@ -313,6 +573,12 @@ class _SavedCardsListState extends State<SavedCardsList> {
         ),
         title: Text(widget.title),
         actions: [
+          if (_groupsEnabled)
+            IconButton(
+              icon: const Icon(Icons.folder_copy_outlined),
+              tooltip: 'Gestisci gruppi',
+              onPressed: _showGroupManager,
+            ),
           IconButton(
             icon: const Icon(Icons.filter_list),
             onPressed: sourceCards.isEmpty
@@ -359,6 +625,18 @@ class _SavedCardsListState extends State<SavedCardsList> {
                     },
                   ),
                 ),
+                if (_groupsEnabled)
+                  _GroupFilterBar(
+                    groups: _groups,
+                    selectedGroupId: _selectedGroupId,
+                    onSelected: (groupId) {
+                      setState(() {
+                        _selectedGroupId = groupId;
+                        _currentPage = 0;
+                      });
+                    },
+                    onCreateGroup: _createGroup,
+                  ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
@@ -400,11 +678,13 @@ class _SavedCardsListState extends State<SavedCardsList> {
                       itemCount: pageCards.length,
                       itemBuilder: (context, index) {
                         final card = pageCards[index];
-                        final cardKey = '${card.expansion.nameEn}_${card.user.username}';
+                        final cardKey =
+                            '${card.expansion.nameEn}_${card.user.username}';
                         return _SavedCardTile(
                           card: card,
                           imageUrl: _imageUrl(card),
                           title: _cardName(card),
+                          priceDelta: _priceDelta(card),
                           isRefreshing: _refreshingCardKey == cardKey,
                           onTap: () {
                             showDialog(
@@ -413,9 +693,12 @@ class _SavedCardsListState extends State<SavedCardsList> {
                                   CardDetailDialog(card: card),
                             );
                           },
+                          onLongPress: _groupsEnabled
+                              ? () => _showCardGroups(card)
+                              : null,
                           onRemove: () {
+                            widget.onRemove(card);
                             setState(() {
-                              widget.onRemove(card);
                               if (pageCards.length == 1 && pageIndex > 0) {
                                 _currentPage = pageIndex - 1;
                               }
@@ -448,6 +731,19 @@ class _SavedCardsListState extends State<SavedCardsList> {
     final value = card.propertiesHash['priceThresholdEur'];
     if (value is num) return value.toDouble();
     return double.tryParse(value?.toString() ?? '');
+  }
+
+  _PriceDelta? _priceDelta(CardMarketplace card) {
+    final snapshots = LocalStorage().priceSnapshotsFor(card);
+    if (snapshots.length < 2) return null;
+
+    final firstPrice = snapshots.first.priceEur;
+    final currentPrice = snapshots.last.priceEur;
+    if (firstPrice <= 0) return null;
+
+    final delta = currentPrice - firstPrice;
+    final deltaPercent = (delta / firstPrice) * 100;
+    return _PriceDelta(delta, deltaPercent);
   }
 }
 
@@ -492,11 +788,73 @@ class _PaginationBar extends StatelessWidget {
   }
 }
 
+class _PriceDelta {
+  final double amount;
+  final double percent;
+
+  const _PriceDelta(this.amount, this.percent);
+}
+
+class _GroupFilterBar extends StatelessWidget {
+  final List<CardGroup> groups;
+  final String? selectedGroupId;
+  final ValueChanged<String?> onSelected;
+  final VoidCallback onCreateGroup;
+
+  const _GroupFilterBar({
+    required this.groups,
+    required this.selectedGroupId,
+    required this.onSelected,
+    required this.onCreateGroup,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 48,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: FilterChip(
+              label: const Text('Tutte'),
+              selected: selectedGroupId == null,
+              onSelected: (_) => onSelected(null),
+            ),
+          ),
+          ...groups.map(
+            (group) => Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: FilterChip(
+                label: Text(group.title),
+                selected: selectedGroupId == group.id,
+                onSelected: (_) => onSelected(group.id),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ActionChip(
+              avatar: const Icon(Icons.add),
+              label: const Text('Gruppo'),
+              onPressed: onCreateGroup,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SavedCardTile extends StatelessWidget {
   final CardMarketplace card;
   final String? imageUrl;
   final String title;
+  final _PriceDelta? priceDelta;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
   final VoidCallback onRemove;
   final VoidCallback? onSetPriceThreshold;
   final VoidCallback? onRefreshPrice;
@@ -506,7 +864,9 @@ class _SavedCardTile extends StatelessWidget {
     required this.card,
     required this.imageUrl,
     required this.title,
+    required this.priceDelta,
     required this.onTap,
+    this.onLongPress,
     required this.onRemove,
     this.onSetPriceThreshold,
     this.onRefreshPrice,
@@ -523,6 +883,7 @@ class _SavedCardTile extends StatelessWidget {
         children: [
           ListTile(
             onTap: onTap,
+            onLongPress: onLongPress,
             leading: ClipRRect(
               borderRadius: BorderRadius.circular(6),
               child: imageUrl != null
@@ -566,38 +927,47 @@ class _SavedCardTile extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(72, 0, 8, 8),
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (onSetPriceThreshold != null)
-                      TextButton.icon(
-                        onPressed: onSetPriceThreshold,
-                        icon: Icon(
-                          threshold == null
-                              ? Icons.notifications_none
-                              : Icons.notifications_active,
-                        ),
-                        label: Text(
-                          threshold == null
-                              ? 'Imposta avviso prezzo'
-                              : 'Avvisami sotto ${threshold.toStringAsFixed(2)} EUR',
-                        ),
-                      ),
-                    if (onRefreshPrice != null)
-                      TextButton.icon(
-                        onPressed: isRefreshing ? null : onRefreshPrice,
-                        icon: isRefreshing
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(Icons.refresh),
-                        label: const Text('Aggiorna prezzo'),
-                      ),
+                    if (priceDelta != null) ...[
+                      _PriceDeltaText(delta: priceDelta!),
+                      const SizedBox(height: 4),
+                    ],
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        if (onSetPriceThreshold != null)
+                          TextButton.icon(
+                            onPressed: onSetPriceThreshold,
+                            icon: Icon(
+                              threshold == null
+                                  ? Icons.notifications_none
+                                  : Icons.notifications_active,
+                            ),
+                            label: Text(
+                              threshold == null
+                                  ? 'Imposta avviso prezzo'
+                                  : 'Avvisami sotto ${threshold.toStringAsFixed(2)} EUR',
+                            ),
+                          ),
+                        if (onRefreshPrice != null)
+                          TextButton.icon(
+                            onPressed: isRefreshing ? null : onRefreshPrice,
+                            icon: isRefreshing
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(Icons.refresh),
+                            label: const Text('Aggiorna prezzo'),
+                          ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -620,5 +990,39 @@ class _SavedCardTile extends StatelessWidget {
     final value = card.propertiesHash['priceThresholdEur'];
     if (value is num) return value.toDouble();
     return double.tryParse(value?.toString() ?? '');
+  }
+}
+
+class _PriceDeltaText extends StatelessWidget {
+  final _PriceDelta delta;
+
+  const _PriceDeltaText({required this.delta});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDrop = delta.amount <= 0;
+    final sign = delta.amount >= 0 ? '+' : '';
+    final color = isDrop ? Colors.green : Colors.red;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          isDrop ? Icons.trending_down : Icons.trending_up,
+          size: 16,
+          color: color,
+        ),
+        const SizedBox(width: 4),
+        Text(
+          'Da aggiunta: $sign${delta.amount.toStringAsFixed(2)} EUR '
+          '($sign${delta.percent.toStringAsFixed(1)}%)',
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.w600,
+            fontSize: 12,
+          ),
+        ),
+      ],
+    );
   }
 }

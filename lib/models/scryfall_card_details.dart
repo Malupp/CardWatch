@@ -3,6 +3,8 @@ class ScryfallCardDetails {
   final String imageUrl;
   final String oracleText;
   final String rarity;
+  final double? manaValue;
+  final List<String> colors;
   final String setName;
   final String setCode;
   final String typeLine;
@@ -14,6 +16,8 @@ class ScryfallCardDetails {
     required this.imageUrl,
     required this.oracleText,
     required this.rarity,
+    required this.manaValue,
+    required this.colors,
     required this.setName,
     required this.setCode,
     required this.typeLine,
@@ -61,6 +65,12 @@ class ScryfallCardDetails {
       }
     }
 
+    final colorsJson = json['colors'] ?? json['color_identity'];
+    final colors = colorsJson is List
+        ? colorsJson.map((color) => color.toString()).toList()
+        : <String>[];
+    final cmc = json['cmc'];
+
     return ScryfallCardDetails(
       name: json['name']?.toString() ?? '',
       imageUrl:
@@ -70,6 +80,8 @@ class ScryfallCardDetails {
           '',
       oracleText: oracleText,
       rarity: json['rarity']?.toString() ?? '',
+      manaValue: cmc is num ? cmc.toDouble() : double.tryParse('$cmc'),
+      colors: colors,
       setName: json['set_name']?.toString() ?? '',
       setCode: json['set']?.toString() ?? '',
       typeLine: json['type_line']?.toString() ?? '',

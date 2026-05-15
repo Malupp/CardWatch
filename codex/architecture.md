@@ -1,104 +1,77 @@
-# Skill: API Integration — CardTrader & Scryfall
+# Skill: Architecture
 
-## CardTrader API
+## App structure
 
-### Authentication
-The personal token is loaded from `.env` via `flutter_dotenv`:
+CardWatch is a Flutter app organized around Material pages, provider state,
+and small services.
+
+Current main folders:
+- `lib/pages/` contains screen-level widgets such as Home, Collection, Watchlist, Draft, Profile.
+- `lib/widgets/` contains shared UI such as `SavedCardsList`, navigation, card tiles, detail dialogs.
+- `lib/services/` contains API, persistence, notifications, and price alert logic.
+- `lib/models/` contains app data objects such as marketplace cards, Scryfall details, groups.
+
+## State management
+
+Global user state lives in `LocalStorage`, a singleton `ChangeNotifier`.
+Use `Provider` to expose it to widgets.
+
+Rules:
+- Read reactive state with `context.watch<LocalStorage>()` inside `build()`.
+- Use `context.read<LocalStorage>()` inside callbacks, handlers, and async methods.
+- Do not mutate returned lists directly; getters return unmodifiable copies.
+- Add or change global state through `LocalStorage` methods, then call `notifyListeners()`.
+
+## Persistence
+
+Current persistence uses `shared_preferences`.
+
+Stored areas:
+- `collection`
+- `watchlist`
+- `collection_groups`
+- `watchlist_groups`
+- price alert settings in `PriceAlertService`
+
+Planned persistence:
+- `price_snapshots`: local JSON map in `shared_preferences` first.
+- Move to SQLite or backend only when history becomes large or needs sync.
+
+## Saved card flow
+
+`SavedCardsList` renders both collection and watchlist cards.
+`WatchlistPage` passes:
+- `cards: () => storage.watchlist`
+- `onRemove: storage.removeFromWatchlist`
+- `onSetPriceThreshold: storage.setWatchlistPriceThreshold`
+
+Collection should follow the same pattern where possible, with page-specific
+callbacks passed into shared widgets instead of branching inside storage.
+
+## API service boundaries
+
+`MarketplaceService` owns CardTrader HTTP calls.
+`ScryfallApi` owns Scryfall HTTP calls.
+`UnifiedCardService` combines saved-card data, Scryfall details, and marketplace offers.
+`PriceAlertService` owns refresh/check logic and background alert scheduling.
+
+Do not call HTTP directly from UI unless the existing page already does so and the
+change is very small. Prefer adding a service method.
+
+## Async widget rules
+
+After every `await` in a stateful widget method, check:
 ```dart
-final token = dotenv.env['CARDTRADER_TOKEN']!;
-```
-Never commit `.env`. It must be in `.gitignore`.
-
-### Endpoints in use
-| Endpoint | Purpose |
-|----------|---------|
-| `GET /blueprints/export` | Search cards by name, returns blueprint list |
-| `GET /marketplace/products` | Active listings for a given blueprint ID |
-
-### Response structure (marketplace)
-Each listing contains:
-- `user.username` — seller
-- `expansion.name_en`, `expansion.code`, `expansion.id`
-- `price.formatted` — e.g. `"1,50 €"`
-- `properties_hash` — free object: condition, language, foil, image URLs
-- `quantity`
-
-### Price parsing
-```dart
-double _parsePrice(String formatted) {
-  final cleaned = formatted
-      .replaceAll(',', '.')
-      .replaceAll(RegExp(r'[^0-9.]'), '')
-      .trim();
-  return double.tryParse(cleaned) ?? double.infinity;
-}
-```
-
-### Adding new fields from CardTrader
-1. Update the `CardMarketplace` model with the new field
-2. Update `fromJson` to extract it from the response
-3. Update `_toJson` in `LocalStorage` to persist it
-4. Update UI widgets if the field needs to be displayed
-
----
-
-## Scryfall API
-
-Base URL: `https://api.scryfall.com` — no authentication required.
-Rate limit: max 10 req/sec. Always add a small delay between bulk requests.
-
-### Endpoints in use
-| Endpoint | Purpose |
-|----------|---------|
-| `GET /cards/search?q=...` | Search cards by name |
-| `GET /sets/{code}` | Info about a set/expansion |
-
-### Fields available for advanced filters
-From `/cards/search` responses:
-- `colors` — array, e.g. `["W","U"]`
-- `color_identity` — for Commander
-- `rarity` — `"common"`, `"uncommon"`, `"rare"`, `"mythic"`
-- `cmc` — mana value as a number
-- `type_line` — e.g. `"Creature — Human Wizard"`
-- `oracle_text` — rules text
-- `image_uris.normal` — card image URL
-- `legalities` — map of format → legal/not_legal/banned/restricted
-
-### Color mapping for UI
-```dart
-const colorMap = {
-  'W': 'White',
-  'U': 'Blue',
-  'B': 'Black',
-  'R': 'Red',
-  'G': 'Green',
-};
-// Colorless = card with empty colors array
+if (!mounted) return;
 ```
 
-### Enriching a card with Scryfall data
-When adding a card to collection or watchlist, optionally fetch Scryfall data
-and store it in `propertiesHash` so filters work offline:
-```dart
-final scryfallCard = await ScryfallApi.getCardByName(card.propertiesHash['name']);
+This is especially important in pages that open dialogs, bottom sheets, snackbars,
+or navigate after async API calls.
 
-final enriched = card.copyWith(propertiesHash: {
-  ...card.propertiesHash,
-  'colors': scryfallCard.colors,
-  'rarity': scryfallCard.rarity,
-  'cmc': scryfallCard.cmc,
-  'type_line': scryfallCard.typeLine,
-});
-```
+## Adding a new feature
 
----
-
-## CardTrader OAuth (planned — direct account integration)
-
-To let users connect their own CardTrader account:
-1. CardTrader supports OAuth2 — requires a registered redirect URI
-2. This means either a minimal backend or a Flutter deep link handler
-3. With OAuth, the app can access the user's personal stock, orders, and wishlist
-4. Without OAuth (current state), only the public marketplace is accessible using the personal dev token
-
-See `backend.md` for the implications of adding a backend to support OAuth.
+1. Put durable user data in `LocalStorage` first.
+2. Add/extend a model only if the data has structure beyond a simple UI flag.
+3. Keep API parsing in services or model factories.
+4. Update shared UI widgets only when the behavior applies to both collection and watchlist.
+5. Update `codex/progress.md` with the new status before finishing.

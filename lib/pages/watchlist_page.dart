@@ -9,7 +9,8 @@ class WatchlistPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final storage = context.watch<LocalStorage>(); // ← si ricostruisce automaticamente
+    final storage = context
+        .watch<LocalStorage>(); // ← si ricostruisce automaticamente
 
     return SavedCardsList(
       title: 'Watchlist',
@@ -18,6 +19,12 @@ class WatchlistPage extends StatelessWidget {
       cards: () => storage.watchlist,
       onRemove: storage.removeFromWatchlist,
       onSetPriceThreshold: storage.setWatchlistPriceThreshold,
+      groups: () => storage.watchlistGroups,
+      onAddGroup: storage.addWatchlistGroup,
+      onRenameGroup: storage.renameWatchlistGroup,
+      onDeleteGroup: storage.deleteWatchlistGroup,
+      onAddCardToGroup: storage.addCardToWatchlistGroup,
+      onRemoveCardFromGroup: storage.removeCardFromWatchlistGroup,
       onNavigate: onNavigate,
     );
   }

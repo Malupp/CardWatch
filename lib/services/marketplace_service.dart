@@ -8,6 +8,10 @@ import '../models/enums/card_game_id.dart';
 
 class MarketplaceService {
   static const Duration _requestTimeout = Duration(seconds: 12);
+  static const Duration _marketplaceProductsInterval = Duration(
+    milliseconds: 150,
+  );
+  static DateTime? _lastMarketplaceProductsRequest;
 
   static String get _baseUrl {
     final configured = dotenv.env['BASE_MARKETPLACE_API'] ?? '';
@@ -28,6 +32,18 @@ class MarketplaceService {
     return queryParameters == null
         ? uri
         : uri.replace(queryParameters: queryParameters);
+  }
+
+  static Future<void> _throttleMarketplaceProducts() async {
+    final lastRequest = _lastMarketplaceProductsRequest;
+    if (lastRequest != null) {
+      final elapsed = DateTime.now().difference(lastRequest);
+      final wait = _marketplaceProductsInterval - elapsed;
+      if (!wait.isNegative) {
+        await Future.delayed(wait);
+      }
+    }
+    _lastMarketplaceProductsRequest = DateTime.now();
   }
 
   // Equivalente di getBlueprintList
@@ -72,9 +88,16 @@ class MarketplaceService {
           'language': language.trim(),
       };
       final url = _uri('/marketplace/products', query);
-      final response = await http
-          .get(url, headers: _headers)
-          .timeout(_requestTimeout);
+      late http.Response response;
+
+      for (var attempt = 0; attempt < 2; attempt++) {
+        await _throttleMarketplaceProducts();
+        response = await http
+            .get(url, headers: _headers)
+            .timeout(_requestTimeout);
+        if (response.statusCode != 429 || attempt == 1) break;
+        await Future.delayed(const Duration(seconds: 1));
+      }
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonResponse = json.decode(response.body);

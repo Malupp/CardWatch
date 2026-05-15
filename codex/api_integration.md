@@ -5,7 +5,8 @@
 ### Autenticazione
 Il token personale viene caricato da `.env` tramite `flutter_dotenv`:
 ```dart
-final token = dotenv.env['CARDTRADER_TOKEN']!;
+final token = dotenv.env['MARKETPLACE_TOKEN']!;
+final baseUrl = dotenv.env['BASE_MARKETPLACE_API']!;
 ```
 
 Il file `.env` NON va mai committato. Aggiungilo a `.gitignore`.
@@ -13,8 +14,21 @@ Il file `.env` NON va mai committato. Aggiungilo a `.gitignore`.
 ### Endpoint principali usati
 | Endpoint | Scopo |
 |----------|-------|
-| `GET /blueprints/export` | Lista blueprint (carte) per nome |
+| `GET /blueprints` | Lista blueprint (carte) per nome nel codice attuale |
 | `GET /marketplace/products` | Offerte di mercato per blueprint ID |
+
+Nota investigativa: alcune note precedenti indicavano `GET /blueprints/export`.
+Se le offerte risultano sempre non disponibili, verificare se l'endpoint corretto
+per l'ambiente configurato sia `/blueprints`, `/blueprints/export`, o un path
+versionato della base URL.
+
+Stato verificato 2026-05-15:
+- `BASE_MARKETPLACE_API` include `/api/v2`.
+- `GET /info` risponde correttamente con il token locale.
+- `GET /blueprints?game_id=1&name=...` funziona nell'ambiente attuale anche se
+  la reference pubblica documenta soprattutto `GET /blueprints/export`.
+- `GET /marketplace/products?blueprint_id=...` funziona, ma va chiamato con
+  throttling: il servizio ora distanzia le chiamate e ritenta una volta su 429.
 
 ### Struttura risposta marketplace
 Ogni offerta ritorna un oggetto con:

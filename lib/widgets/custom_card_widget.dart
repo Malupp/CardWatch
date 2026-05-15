@@ -21,7 +21,6 @@ class CustomCardWidget extends StatefulWidget {
 }
 
 class _CustomCardWidgetState extends State<CustomCardWidget> {
-  bool _isImageLoading = true;
   bool _hasImageError = false;
   String? _currentImageUrl;
 
@@ -41,7 +40,6 @@ class _CustomCardWidgetState extends State<CustomCardWidget> {
 
   Future<void> _loadImage() async {
     setState(() {
-      _isImageLoading = true;
       _hasImageError = false;
     });
 
@@ -52,14 +50,18 @@ class _CustomCardWidgetState extends State<CustomCardWidget> {
     }
 
     // Se non c'è immagine principale, prova l'immagine normale
-    if (widget.card.imageNormalUrl != null && widget.card.imageNormalUrl!.isNotEmpty) {
+    if (widget.card.imageNormalUrl != null &&
+        widget.card.imageNormalUrl!.isNotEmpty) {
       _currentImageUrl = widget.card.imageNormalUrl;
       return;
     }
 
     // Se ancora non c'è immagine, prova a cercare nel marketplace
     try {
-      final blueprints = await MarketplaceService.getBlueprintList(widget.card.name);
+      final blueprints = await MarketplaceService.getBlueprintList(
+        widget.card.name,
+      );
+      if (!mounted) return;
       if (blueprints.isNotEmpty && blueprints.first.imageUrl != null) {
         setState(() {
           _currentImageUrl = blueprints.first.imageUrl;
@@ -71,9 +73,9 @@ class _CustomCardWidgetState extends State<CustomCardWidget> {
     }
 
     // Se tutto fallisce, mostra errore
+    if (!mounted) return;
     setState(() {
       _hasImageError = true;
-      _isImageLoading = false;
     });
   }
 
@@ -89,16 +91,11 @@ class _CustomCardWidgetState extends State<CustomCardWidget> {
       fit: BoxFit.cover,
       loadingBuilder: (context, child, loadingProgress) {
         if (loadingProgress == null) {
-          setState(() => _isImageLoading = false);
           return child;
         }
         return _buildLoadingPlaceholder();
       },
       errorBuilder: (context, error, stackTrace) {
-        setState(() {
-          _hasImageError = true;
-          _isImageLoading = false;
-        });
         return _buildPlaceholder();
       },
     );
@@ -120,10 +117,7 @@ class _CustomCardWidgetState extends State<CustomCardWidget> {
           const SizedBox(height: 8),
           Text(
             _hasImageError ? 'Immagine non disponibile' : 'Nessuna immagine',
-            style: TextStyle(
-              color: Colors.grey[600],
-              fontSize: 12,
-            ),
+            style: TextStyle(color: Colors.grey[600], fontSize: 12),
           ),
         ],
       ),
@@ -135,9 +129,7 @@ class _CustomCardWidgetState extends State<CustomCardWidget> {
       width: double.infinity,
       height: 200,
       color: Colors.grey[100],
-      child: const Center(
-        child: CircularProgressIndicator(),
-      ),
+      child: const Center(child: CircularProgressIndicator()),
     );
   }
 
@@ -160,7 +152,11 @@ class _CustomCardWidgetState extends State<CustomCardWidget> {
   }
 
   void _toggleCollection(CardModel card) {
-    final isInCollection = LocalStorage().collection.any((c) => c.expansion.nameEn == card.expansion && c.user.username == card.username);
+    final isInCollection = LocalStorage().collection.any(
+      (c) =>
+          c.expansion.nameEn == card.expansion &&
+          c.user.username == card.username,
+    );
     if (isInCollection) {
       LocalStorage().removeFromCollection(_toMarketplace(card));
       ScaffoldMessenger.of(context).showSnackBar(
@@ -176,7 +172,11 @@ class _CustomCardWidgetState extends State<CustomCardWidget> {
   }
 
   void _toggleWatchlist(CardModel card) {
-    final isInWatchlist = LocalStorage().watchlist.any((c) => c.expansion.nameEn == card.expansion && c.user.username == card.username);
+    final isInWatchlist = LocalStorage().watchlist.any(
+      (c) =>
+          c.expansion.nameEn == card.expansion &&
+          c.user.username == card.username,
+    );
     if (isInWatchlist) {
       LocalStorage().removeFromWatchlist(_toMarketplace(card));
       ScaffoldMessenger.of(context).showSnackBar(
@@ -201,10 +201,7 @@ class _CustomCardWidgetState extends State<CustomCardWidget> {
             width: 80,
             child: Text(
               '$label:',
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
             ),
           ),
           Expanded(
@@ -239,8 +236,16 @@ class _CustomCardWidgetState extends State<CustomCardWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final isInCollection = LocalStorage().collection.any((c) => c.expansion.nameEn == widget.card.expansion && c.user.username == widget.card.username);
-    final isInWatchlist = LocalStorage().watchlist.any((c) => c.expansion.nameEn == widget.card.expansion && c.user.username == widget.card.username);
+    final isInCollection = LocalStorage().collection.any(
+      (c) =>
+          c.expansion.nameEn == widget.card.expansion &&
+          c.user.username == widget.card.username,
+    );
+    final isInWatchlist = LocalStorage().watchlist.any(
+      (c) =>
+          c.expansion.nameEn == widget.card.expansion &&
+          c.user.username == widget.card.username,
+    );
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8),
@@ -248,46 +253,56 @@ class _CustomCardWidgetState extends State<CustomCardWidget> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           GestureDetector(
-            onTap: widget.onTap ?? () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: Text(widget.card.name),
-                  content: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (_currentImageUrl != null && _currentImageUrl!.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 8.0),
-                            child: Image.network(
-                              _currentImageUrl!,
-                              height: 250,
-                              fit: BoxFit.contain,
-                              errorBuilder: (context, error, stackTrace) => Container(
-                                height: 250,
-                                color: Colors.grey[200],
-                                child: const Center(
-                                  child: Icon(Icons.broken_image, size: 50, color: Colors.grey),
+            onTap:
+                widget.onTap ??
+                () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: Text(widget.card.name),
+                      content: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (_currentImageUrl != null &&
+                                _currentImageUrl!.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8.0),
+                                child: Image.network(
+                                  _currentImageUrl!,
+                                  height: 250,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      Container(
+                                        height: 250,
+                                        color: Colors.grey[200],
+                                        child: const Center(
+                                          child: Icon(
+                                            Icons.broken_image,
+                                            size: 50,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                      ),
                                 ),
                               ),
-                            ),
-                          ),
+                          ],
+                        ),
+                      ),
+                      actions: [
+                        TextButton(
+                          child: const Text('CHIUDI'),
+                          onPressed: () => Navigator.pop(context),
+                        ),
                       ],
                     ),
-                  ),
-                  actions: [
-                    TextButton(
-                      child: const Text('CHIUDI'),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-              );
-            },
+                  );
+                },
             child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(12),
+              ),
               child: _buildImage(),
             ),
           ),
@@ -330,7 +345,10 @@ class _CustomCardWidgetState extends State<CustomCardWidget> {
                       ),
                       _buildDetailRow(
                         'Prezzo Foil',
-                        widget.card.price.split('(Foil:')[1].replaceAll(')', '').trim(),
+                        widget.card.price
+                            .split('(Foil:')[1]
+                            .replaceAll(')', '')
+                            .trim(),
                         valueStyle: TextStyle(
                           color: Colors.grey[600],
                           fontStyle: FontStyle.italic,
@@ -377,8 +395,12 @@ class _CustomCardWidgetState extends State<CustomCardWidget> {
                   children: [
                     _buildDetailChip('Foil', widget.card.isFoil ? 'Sì' : 'No'),
                     if (widget.card.graded) _buildDetailChip('Graded', 'Sì'),
-                    if (widget.card.quantity != null && widget.card.quantity! > 1)
-                      _buildDetailChip('Quantità', widget.card.quantity.toString()),
+                    if (widget.card.quantity != null &&
+                        widget.card.quantity! > 1)
+                      _buildDetailChip(
+                        'Quantità',
+                        widget.card.quantity.toString(),
+                      ),
                   ],
                 ),
                 if (widget.showActions) ...[
@@ -406,7 +428,9 @@ class _CustomCardWidgetState extends State<CustomCardWidget> {
                         child: OutlinedButton.icon(
                           onPressed: () => _toggleWatchlist(widget.card),
                           icon: Icon(
-                            isInWatchlist ? Icons.favorite : Icons.favorite_border,
+                            isInWatchlist
+                                ? Icons.favorite
+                                : Icons.favorite_border,
                             color: isInWatchlist ? Colors.red : null,
                           ),
                           label: Text(

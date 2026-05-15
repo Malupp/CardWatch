@@ -32,7 +32,8 @@ lib/
   widgets/        # SavedCardsList, AppDrawer, CarouselWidget, CardDetailDialog
 codex/
   AGENTS.md       # This file
-  skills/         # Topic-specific guides
+  progress.md     # Work tracker: update this whenever Codex changes code or plans work
+  *.md            # Topic-specific guides
 ```
 
 ## Hard rules for Codex
@@ -41,12 +42,14 @@ codex/
 3. Always add `if (!mounted) return;` after every `await` in a widget
 4. Never commit `.env` — the CardTrader token must stay out of version control
 5. Do not introduce new dependencies without adding them to `pubspec.yaml` and documenting them here
+6. Keep `codex/progress.md` updated whenever work starts, finishes, or a planned task changes status
 
 ## Skills index
 | File | Topic |
 |------|-------|
-| `skills/architecture.md` | Provider, LocalStorage, state patterns |
-| `skills/api_integration.md` | CardTrader API, Scryfall API, OAuth plan |
-| `skills/features.md` | Groups, deck builder, draft, price snapshots, game tools |
-| `skills/distribution.md` | APK, IPA, API token handling for public release |
-| `skills/backend.md` | When and how to introduce a backend |
+| `architecture.md` | Provider, LocalStorage, state patterns |
+| `api_integration.md` | CardTrader API, Scryfall API, OAuth plan |
+| `features.md` | Groups, deck builder, draft, price snapshots, game tools |
+| `distribution.md` | APK, IPA, API token handling for public release |
+| `Backend.md` | When and how to introduce a backend |
+| `progress.md` | Current status, decisions, and next work queue |

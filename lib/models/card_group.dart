@@ -5,29 +5,21 @@ class CardGroup {
   final String title;
   final List<String> cardKeys;
 
-  CardGroup({
-    String? id,
-    required this.title,
-    required this.cardKeys,
-  }) : id = id ?? const Uuid().v4();
+  CardGroup({String? id, required this.title, required this.cardKeys})
+    : id = id ?? const Uuid().v4();
 
   factory CardGroup.fromJson(Map<String, dynamic> json) => CardGroup(
     id: json['id'] as String,
     title: json['title'] as String,
-    cardKeys: List<String>.from(json['cardKeys'] as List<dynamic> ?? []),
+    cardKeys: List<String>.from(
+      (json['cardKeys'] as List<dynamic>?) ?? const [],
+    ),
   );
 
-  Map<String, dynamic> toJson() => ({
-    'id': id,
-    'title': title,
-    'cardKeys': cardKeys,
-  });
+  Map<String, dynamic> toJson() =>
+      ({'id': id, 'title': title, 'cardKeys': cardKeys});
 
-  CardGroup copyWith({
-    String? id,
-    String? title,
-    List<String>? cardKeys,
-  }) {
+  CardGroup copyWith({String? id, String? title, List<String>? cardKeys}) {
     return CardGroup(
       id: id ?? this.id,
       title: title ?? this.title,
@@ -38,9 +30,7 @@ class CardGroup {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is CardGroup &&
-          runtimeType == other.runtimeType &&
-          id == other.id;
+      other is CardGroup && runtimeType == other.runtimeType && id == other.id;
 
   @override
   int get hashCode => id.hashCode;

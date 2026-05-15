@@ -39,10 +39,12 @@ class PriceAlertService {
     for (final savedCard in [...storage.collection]) {
       final offers = await _getOffers(savedCard);
       if (offers.isNotEmpty) {
-        final bestOffer = offers.reduce((a, b) =>
-            _parsePrice(a.price.formatted) < _parsePrice(b.price.formatted)
-                ? a
-                : b);
+        final bestOffer = offers.reduce(
+          (a, b) =>
+              _parsePrice(a.price.formatted) < _parsePrice(b.price.formatted)
+              ? a
+              : b,
+        );
         if (_matchesSavedCard(savedCard, bestOffer)) {
           storage.updateCardPrice(savedCard, bestOffer);
           updatedCount++;
@@ -53,10 +55,12 @@ class PriceAlertService {
     for (final savedCard in [...storage.watchlist]) {
       final offers = await _getOffers(savedCard);
       if (offers.isNotEmpty) {
-        final bestOffer = offers.reduce((a, b) =>
-            _parsePrice(a.price.formatted) < _parsePrice(b.price.formatted)
-                ? a
-                : b);
+        final bestOffer = offers.reduce(
+          (a, b) =>
+              _parsePrice(a.price.formatted) < _parsePrice(b.price.formatted)
+              ? a
+              : b,
+        );
         if (_matchesSavedCard(savedCard, bestOffer)) {
           storage.updateCardPrice(savedCard, bestOffer);
           updatedCount++;
@@ -74,10 +78,11 @@ class PriceAlertService {
     final offers = await _getOffers(card);
     if (offers.isEmpty) return null;
 
-    final bestOffer = offers.reduce((a, b) =>
-        _parsePrice(a.price.formatted) < _parsePrice(b.price.formatted)
-            ? a
-            : b);
+    final bestOffer = offers.reduce(
+      (a, b) => _parsePrice(a.price.formatted) < _parsePrice(b.price.formatted)
+          ? a
+          : b,
+    );
 
     if (_matchesSavedCard(card, bestOffer)) {
       LocalStorage().updateCardPrice(card, bestOffer);
@@ -152,9 +157,12 @@ class PriceAlertService {
     Set<String> notifiedSet,
   ) async {
     final offers = await _getOffers(savedCard);
-    for (final offer in offers) {
-      if (!_matchesSavedCard(savedCard, offer)) continue;
+    final matchingOffers = offers
+        .where((offer) => _matchesSavedCard(savedCard, offer))
+        .toList();
+    _recordBestSnapshot(savedCard, matchingOffers);
 
+    for (final offer in matchingOffers) {
       final offerPrice = _parsePrice(offer.price.formatted);
       final savedPrice = _parsePrice(savedCard.price.formatted);
       if (offerPrice < savedPrice) {
@@ -178,10 +186,12 @@ class PriceAlertService {
     final threshold = _priceThresholdEur(savedCard);
     final targetPrice = threshold ?? _parsePrice(savedCard.price.formatted);
     final offers = await _getOffers(savedCard);
+    final matchingOffers = offers
+        .where((offer) => _matchesSavedCard(savedCard, offer))
+        .toList();
+    _recordBestSnapshot(savedCard, matchingOffers);
 
-    for (final offer in offers) {
-      if (!_matchesSavedCard(savedCard, offer)) continue;
-
+    for (final offer in matchingOffers) {
       final offerPrice = _parsePrice(offer.price.formatted);
       if (offerPrice <= targetPrice) {
         final uniqueKey = _alertKey(savedCard, offer, 'watchlist_$targetPrice');
@@ -269,5 +279,21 @@ class PriceAlertService {
         .replaceAll(RegExp(r'[^0-9.]'), '')
         .trim();
     return double.tryParse(cleaned) ?? 99999.0;
+  }
+
+  static void _recordBestSnapshot(
+    CardMarketplace savedCard,
+    List<CardMarketplace> offers,
+  ) {
+    if (offers.isEmpty) return;
+
+    final bestOffer = offers.reduce(
+      (a, b) => _parsePrice(a.price.formatted) < _parsePrice(b.price.formatted)
+          ? a
+          : b,
+    );
+    LocalStorage().recordPriceSnapshot(
+      savedCard.copyWith(price: bestOffer.price),
+    );
   }
 }

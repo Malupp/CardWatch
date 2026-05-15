@@ -8,16 +8,38 @@ import '../widgets/app_drawer.dart';
 class DraftPage extends StatefulWidget {
   final Function(int) onNavigate;
 
-  const DraftPage({
-    super.key,
-    required this.onNavigate,
-  });
+  const DraftPage({super.key, required this.onNavigate});
 
   @override
   State<DraftPage> createState() => _DraftPageState();
 }
 
 class _DraftPageState extends State<DraftPage> {
+  static const Map<String, String> _colorLabels = {
+    'W': 'Bianco',
+    'U': 'Blu',
+    'B': 'Nero',
+    'R': 'Rosso',
+    'G': 'Verde',
+    'C': 'Incolore',
+  };
+  static const List<String> _rarityFilters = [
+    'common',
+    'uncommon',
+    'rare',
+    'mythic',
+  ];
+  static const List<String> _typeFilters = [
+    'Creature',
+    'Instant',
+    'Sorcery',
+    'Artifact',
+    'Enchantment',
+    'Planeswalker',
+    'Land',
+    'Battle',
+  ];
+
   List<ScryfallSet> _sets = [];
   ScryfallSet? _selectedSet;
   bool _loadingSets = true;
@@ -25,6 +47,11 @@ class _DraftPageState extends State<DraftPage> {
   List<CardModel> _cards = [];
   List<CardModel> _filteredCards = [];
   final TextEditingController _searchController = TextEditingController();
+  final Set<String> _selectedColors = <String>{};
+  String? _selectedRarity;
+  String? _selectedType;
+  double _maxManaValue = 16;
+  RangeValues _manaValueRange = const RangeValues(0, 16);
 
   int _currentPage = 0;
   final int _cardsPerPage = 10;
@@ -43,6 +70,7 @@ class _DraftPageState extends State<DraftPage> {
 
   Future<void> _loadSets() async {
     final sets = await ScryfallApi.fetchSets();
+    if (!mounted) return;
     setState(() {
       _sets = sets;
       _loadingSets = false;
@@ -55,35 +83,101 @@ class _DraftPageState extends State<DraftPage> {
       _cards = [];
     });
     final cards = await ScryfallApi.fetchCardsBySet(code);
+    if (!mounted) return;
     setState(() {
       _cards = cards;
-      _filteredCards = cards;
+      _maxManaValue = _resolveMaxManaValue(cards);
+      _manaValueRange = RangeValues(0, _maxManaValue);
+      _applyFilters();
       _loadingCards = false;
-      _currentPage = 0;
     });
   }
 
   void _filterCards(String query) {
-    setState(() {
-      if (query.isEmpty) {
-        _filteredCards = _cards;
-      } else {
-        _filteredCards = _cards
-            .where((c) => c.name.toLowerCase().contains(query.toLowerCase()))
-            .toList();
+    setState(_applyFilters);
+  }
+
+  void _applyFilters() {
+    final query = _searchController.text.trim().toLowerCase();
+    final manaFilterActive =
+        _manaValueRange.start > 0 || _manaValueRange.end < _maxManaValue;
+
+    _filteredCards = _cards.where((card) {
+      if (query.isNotEmpty && !card.name.toLowerCase().contains(query)) {
+        return false;
       }
-      _currentPage = 0;
+
+      if (_selectedColors.isNotEmpty && !_matchesColorFilter(card)) {
+        return false;
+      }
+
+      if (_selectedRarity != null && card.rarity != _selectedRarity) {
+        return false;
+      }
+
+      if (manaFilterActive) {
+        final manaValue = card.manaValue;
+        if (manaValue == null ||
+            manaValue < _manaValueRange.start ||
+            manaValue > _manaValueRange.end) {
+          return false;
+        }
+      }
+
+      if (_selectedType != null) {
+        final typeLine = card.typeLine?.toLowerCase() ?? '';
+        if (!typeLine.contains(_selectedType!.toLowerCase())) return false;
+      }
+
+      return true;
+    }).toList();
+    _currentPage = 0;
+  }
+
+  bool _matchesColorFilter(CardModel card) {
+    final cardColors = card.colors.toSet();
+    final requiresColorless = _selectedColors.contains('C');
+    final selectedColored = _selectedColors
+        .where((color) => color != 'C')
+        .toList();
+
+    if (requiresColorless && cardColors.isNotEmpty) return false;
+    return selectedColored.every(cardColors.contains);
+  }
+
+  double _resolveMaxManaValue(List<CardModel> cards) {
+    var maxValue = 7.0;
+    for (final card in cards) {
+      final manaValue = card.manaValue;
+      if (manaValue != null && manaValue > maxValue) {
+        maxValue = manaValue;
+      }
+    }
+    return maxValue.ceilToDouble().clamp(1, 16).toDouble();
+  }
+
+  void _clearFilters() {
+    setState(() {
+      _selectedColors.clear();
+      _selectedRarity = null;
+      _selectedType = null;
+      _manaValueRange = RangeValues(0, _maxManaValue);
+      _applyFilters();
     });
   }
 
   List<CardModel> get _currentPageCards {
     final startIndex = _currentPage * _cardsPerPage;
-    final endIndex = (startIndex + _cardsPerPage).clamp(0, _filteredCards.length);
+    final endIndex = (startIndex + _cardsPerPage).clamp(
+      0,
+      _filteredCards.length,
+    );
     return _filteredCards.sublist(startIndex, endIndex);
   }
 
   void _showCardDetails(CardModel card) {
-    final imageUrl = (card.imageNormalUrl != null && card.imageNormalUrl!.isNotEmpty)
+    final imageUrl =
+        (card.imageNormalUrl != null && card.imageNormalUrl!.isNotEmpty)
         ? card.imageNormalUrl!
         : card.imageUrl;
 
@@ -127,7 +221,8 @@ class _DraftPageState extends State<DraftPage> {
                           ),
                           const SizedBox(height: 6),
                           Text(card.expansion),
-                          if (card.typeLine != null && card.typeLine!.isNotEmpty)
+                          if (card.typeLine != null &&
+                              card.typeLine!.isNotEmpty)
                             Padding(
                               padding: const EdgeInsets.only(top: 6),
                               child: Text(card.typeLine!),
@@ -204,26 +299,32 @@ class _DraftPageState extends State<DraftPage> {
                       if (value.text.isEmpty) {
                         return const Iterable<ScryfallSet>.empty();
                       }
-                      return _sets.where((s) =>
-                          s.name.toLowerCase().contains(value.text.toLowerCase()));
+                      return _sets.where(
+                        (s) => s.name.toLowerCase().contains(
+                          value.text.toLowerCase(),
+                        ),
+                      );
                     },
                     displayStringForOption: (s) => s.name,
                     fieldViewBuilder:
                         (context, textController, focusNode, onFieldSubmitted) {
-                      return TextField(
-                        controller: textController,
-                        focusNode: focusNode,
-                        decoration: InputDecoration(
-                          labelText: 'Cerca espansione',
-                          prefixIcon: const Icon(Icons.search),
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(
-                              vertical: 8, horizontal: 12),
-                          border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(30)),
-                        ),
-                      );
-                    },
+                          return TextField(
+                            controller: textController,
+                            focusNode: focusNode,
+                            decoration: InputDecoration(
+                              labelText: 'Cerca espansione',
+                              prefixIcon: const Icon(Icons.search),
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 8,
+                                horizontal: 12,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                            ),
+                          );
+                        },
                     onSelected: (s) {
                       setState(() => _selectedSet = s);
                       _loadCardsForSet(s.code);
@@ -235,17 +336,26 @@ class _DraftPageState extends State<DraftPage> {
                 controller: _searchController,
                 decoration: InputDecoration(
                   labelText: 'Cerca carta',
-                  prefixIcon: Icon(Icons.search),
+                  prefixIcon: const Icon(Icons.search),
                   isDense: true,
-                  contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 8,
+                    horizontal: 12,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
                 ),
                 onChanged: _filterCards,
               ),
+              const SizedBox(height: 12),
+              _buildFilterPanel(context),
               const SizedBox(height: 16),
             ],
             _loadingCards
-                ? const Expanded(child: Center(child: CircularProgressIndicator()))
+                ? const Expanded(
+                    child: Center(child: CircularProgressIndicator()),
+                  )
                 : Expanded(
                     child: Column(
                       children: [
@@ -263,11 +373,15 @@ class _DraftPageState extends State<DraftPage> {
                                 ),
                                 Text(
                                   "Pagina ${_currentPage + 1} di ${(_filteredCards.length / _cardsPerPage).ceil()}",
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                                 IconButton(
                                   icon: const Icon(Icons.chevron_right),
-                                  onPressed: (_currentPage + 1) * _cardsPerPage < _filteredCards.length
+                                  onPressed:
+                                      (_currentPage + 1) * _cardsPerPage <
+                                          _filteredCards.length
                                       ? () => setState(() => _currentPage++)
                                       : null,
                                 ),
@@ -275,19 +389,36 @@ class _DraftPageState extends State<DraftPage> {
                             ),
                           ),
                         Expanded(
-                          child: ListView.builder(
-                            itemCount: _currentPageCards.length,
-                            itemBuilder: (context, index) {
-                              final card = _currentPageCards[index];
-                              return ListTile(
-                                dense: true,
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                                leading: _buildCardImage(card),
-                                title: Text(card.name, overflow: TextOverflow.ellipsis),
-                                onTap: () => _showCardDetails(card),
-                              );
-                            },
-                          ),
+                          child: _filteredCards.isEmpty && _cards.isNotEmpty
+                              ? const Center(
+                                  child: Text(
+                                    'Nessuna carta con questi filtri',
+                                  ),
+                                )
+                              : ListView.builder(
+                                  itemCount: _currentPageCards.length,
+                                  itemBuilder: (context, index) {
+                                    final card = _currentPageCards[index];
+                                    return ListTile(
+                                      dense: true,
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                          ),
+                                      leading: _buildCardImage(card),
+                                      title: Text(
+                                        card.name,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      subtitle: Text(
+                                        _draftCardSubtitle(card),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      onTap: () => _showCardDetails(card),
+                                    );
+                                  },
+                                ),
                         ),
                       ],
                     ),
@@ -296,6 +427,168 @@ class _DraftPageState extends State<DraftPage> {
         ),
       ),
     );
+  }
+
+  Widget _buildFilterPanel(BuildContext context) {
+    final activeFilters = _activeFilterCount;
+    final manaMax = _maxManaValue;
+
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: Theme.of(context).dividerColor),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: ExpansionTile(
+        initiallyExpanded: activeFilters > 0,
+        leading: const Icon(Icons.filter_alt),
+        title: Text(activeFilters == 0 ? 'Filtri' : 'Filtri ($activeFilters)'),
+        subtitle: Text('${_filteredCards.length} di ${_cards.length} carte'),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: _colorLabels.entries.map((entry) {
+                return FilterChip(
+                  label: Text(entry.value),
+                  selected: _selectedColors.contains(entry.key),
+                  onSelected: (selected) {
+                    setState(() {
+                      selected
+                          ? _selectedColors.add(entry.key)
+                          : _selectedColors.remove(entry.key);
+                      _applyFilters();
+                    });
+                  },
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String?>(
+            value: _selectedRarity,
+            decoration: const InputDecoration(
+              labelText: 'Rarità',
+              border: OutlineInputBorder(),
+              isDense: true,
+            ),
+            items: [
+              const DropdownMenuItem<String?>(
+                value: null,
+                child: Text('Tutte'),
+              ),
+              ..._rarityFilters.map(
+                (rarity) => DropdownMenuItem<String?>(
+                  value: rarity,
+                  child: Text(_formatRarity(rarity)),
+                ),
+              ),
+            ],
+            onChanged: (value) {
+              setState(() {
+                _selectedRarity = value;
+                _applyFilters();
+              });
+            },
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String?>(
+            value: _selectedType,
+            decoration: const InputDecoration(
+              labelText: 'Tipo carta',
+              border: OutlineInputBorder(),
+              isDense: true,
+            ),
+            items: [
+              const DropdownMenuItem<String?>(
+                value: null,
+                child: Text('Tutti'),
+              ),
+              ..._typeFilters.map(
+                (type) =>
+                    DropdownMenuItem<String?>(value: type, child: Text(type)),
+              ),
+            ],
+            onChanged: (value) {
+              setState(() {
+                _selectedType = value;
+                _applyFilters();
+              });
+            },
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const Icon(Icons.speed, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Mana value ${_formatManaValue(_manaValueRange.start)}-${_formatManaValue(_manaValueRange.end)}',
+              ),
+            ],
+          ),
+          RangeSlider(
+            values: _manaValueRange,
+            min: 0,
+            max: manaMax,
+            divisions: manaMax.round(),
+            labels: RangeLabels(
+              _formatManaValue(_manaValueRange.start),
+              _formatManaValue(_manaValueRange.end),
+            ),
+            onChanged: (values) {
+              setState(() {
+                _manaValueRange = RangeValues(
+                  values.start.roundToDouble(),
+                  values.end.roundToDouble(),
+                );
+                _applyFilters();
+              });
+            },
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: activeFilters == 0 ? null : _clearFilters,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Reset'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  int get _activeFilterCount {
+    var count = 0;
+    if (_selectedColors.isNotEmpty) count++;
+    if (_selectedRarity != null) count++;
+    if (_selectedType != null) count++;
+    if (_manaValueRange.start > 0 || _manaValueRange.end < _maxManaValue) {
+      count++;
+    }
+    return count;
+  }
+
+  String _draftCardSubtitle(CardModel card) {
+    final parts = <String>[
+      if (card.typeLine != null && card.typeLine!.isNotEmpty) card.typeLine!,
+      if (card.rarity != null && card.rarity!.isNotEmpty)
+        _formatRarity(card.rarity!),
+      if (card.manaValue != null) 'MV ${_formatManaValue(card.manaValue!)}',
+    ];
+    return parts.join(' - ');
+  }
+
+  static String _formatRarity(String rarity) {
+    if (rarity.isEmpty) return rarity;
+    return rarity[0].toUpperCase() + rarity.substring(1);
+  }
+
+  static String _formatManaValue(double value) {
+    if (value == value.roundToDouble()) return value.round().toString();
+    return value.toStringAsFixed(1);
   }
 
   Widget _buildCardImage(CardModel card) {
@@ -324,7 +617,7 @@ class _DraftPageState extends State<DraftPage> {
         },
       );
     }
-    
+
     // Se non c'è immagine principale, prova l'immagine normale
     if (card.imageNormalUrl != null && card.imageNormalUrl!.isNotEmpty) {
       return Image.network(
@@ -350,7 +643,7 @@ class _DraftPageState extends State<DraftPage> {
         },
       );
     }
-    
+
     // Se non ci sono immagini, mostra placeholder
     return _buildImagePlaceholder();
   }

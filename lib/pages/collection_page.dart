@@ -17,6 +17,12 @@ class CollectionPage extends StatelessWidget {
       drawerIndex: 1,
       cards: () => storage.collection,
       onRemove: storage.removeFromCollection,
+      groups: () => storage.collectionGroups,
+      onAddGroup: storage.addCollectionGroup,
+      onRenameGroup: storage.renameCollectionGroup,
+      onDeleteGroup: storage.deleteCollectionGroup,
+      onAddCardToGroup: storage.addCardToCollectionGroup,
+      onRemoveCardFromGroup: storage.removeCardFromCollectionGroup,
       onNavigate: onNavigate,
     );
   }
